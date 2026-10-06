@@ -70,7 +70,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .rad--summa span:first-child { font-weight: 600; }
 .stor { font-family: var(--rubrik); font-size: 60px; line-height: 1; font-weight: 500; color: var(--petrol); }
 .stor--vin { color: var(--vin); }
-.stor--saknas { font-family: var(--text); font-size: 16px; line-height: 1.4; }
+.stor.stor--saknas { font-family: var(--text); font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
 
 /* Mobile */
 @media (max-width: 1100px) {
@@ -92,6 +92,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   .rad { gap: 10px; font-size: 16px; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); }
   .rad--rubrik { font-size: 10px; letter-spacing: 0.04em; }
   .stor { font-size: 42px; }
+  .stor.stor--saknas { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -123,10 +124,10 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
         <form class="formular" id="kotidsform">
           <div class="formular__falt">
             <label>Din ålder
-              <input type="number" name="alder" min="16" max="99" placeholder="22">
+              <input type="number" name="alder" min="18" max="99" step="1" placeholder="22">
             </label>
             <label>Kötid i år
-              <input type="number" name="kotid" min="0" step="1" placeholder="2">
+              <input type="number" name="kotid" min="0" max="4" step="1" placeholder="2" aria-describedby="kotid-hjalp">
             </label>
             <label>Område
               <select name="omrade">
@@ -140,6 +141,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
               </select>
             </label>
           </div>
+          <p id="kotid-hjalp" style="margin: 0; font-size: 13px; line-height: 1.5;">Du kan stå i kön från 18 års ålder. Max kötid: 4 år vid 22 års ålder.</p>
           <button class="knapp" type="submit">Räkna ut min ålder</button>
         </form>
       </div>
@@ -194,14 +196,30 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     return Math.round(tal) + " år";
   }
 
+  function uppdateraValidering() {
+    var form = document.getElementById("kotidsform");
+    var alder = form.alder.value === "" ? 22 : Number(form.alder.value);
+    var giltigAlder = Number.isInteger(alder) && alder >= 18 && alder <= 99;
+    var maxKotid = giltigAlder ? alder - 18 : 0;
+    form.alder.setCustomValidity(giltigAlder ? "" : "Ange en ålder mellan 18 och 99 år i hela år.");
+    form.kotid.max = maxKotid;
+    form.kotid.placeholder = Math.min(2, maxKotid);
+    var kotid = form.kotid.value === "" ? Number(form.kotid.placeholder) : Number(form.kotid.value);
+    var giltigKotid = Number.isInteger(kotid) && kotid >= 0 && kotid <= maxKotid;
+    form.kotid.setCustomValidity(giltigKotid ? "" : "Ange en kötid mellan 0 och " + maxKotid + " år. Du kan stå i kön från 18 års ålder.");
+    document.getElementById("kotid-hjalp").textContent = giltigAlder
+      ? "Du kan stå i kön från 18 års ålder. Max kötid: " + maxKotid + " år vid " + alder + " års ålder."
+      : "Ange en ålder mellan 18 och 99 år för att se din maximala kötid.";
+    return { alder: alder, kotid: kotid };
+  }
+
   function raknaUtAlder() {
     var form = document.getElementById("kotidsform");
-    var alder = parseFloat(form.alder.value);
-    var kotid = parseFloat(form.kotid.value);
+    var varden = uppdateraValidering();
+    if (!form.reportValidity()) return false;
+    var alder = varden.alder;
+    var kotid = varden.kotid;
     var omrade = form.omrade.value;
-
-    if (isNaN(alder) || alder <= 0) alder = parseFloat(form.alder.placeholder) || 22;
-    if (isNaN(kotid) || kotid < 0) kotid = parseFloat(form.kotid.placeholder) || 0;
 
     var data = kotider[omrade] || kotider["Farsta"];
 
@@ -234,17 +252,22 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       : "Statistiken gäller " + (omrade === "Nacka" ? "hela Nacka kommun" : "hela Bromma stadsdelsområde") + ".";
   }
 
-  document.getElementById("nyproduktion-link").addEventListener("click", function () {
-    raknaUtAlder();
+  document.getElementById("nyproduktion-link").addEventListener("click", function (e) {
+    if (raknaUtAlder() === false) {
+      e.preventDefault();
+      return;
+    }
     document.getElementById("rub-omrade2").focus({ preventScroll: true });
   });
 
   document.getElementById("kotidsform").addEventListener("submit", function (e) {
     e.preventDefault();
-    raknaUtAlder();
+    if (raknaUtAlder() === false) return;
     document.getElementById("rakning").scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
+  document.getElementById("kotidsform").alder.addEventListener("input", uppdateraValidering);
+  document.getElementById("kotidsform").kotid.addEventListener("input", uppdateraValidering);
   raknaUtAlder();
 </script>
 
