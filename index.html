@@ -70,6 +70,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .rad--summa span:first-child { font-weight: 600; }
 .stor { font-family: var(--rubrik); font-size: 60px; line-height: 1; font-weight: 500; color: var(--petrol); }
 .stor--vin { color: var(--vin); }
+.stor--saknas { font-family: var(--text); font-size: 16px; line-height: 1.4; }
 
 /* Mobile */
 @media (max-width: 1100px) {
@@ -125,13 +126,17 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
               <input type="number" name="alder" min="16" max="99" placeholder="22">
             </label>
             <label>Kötid i år
-              <input type="number" name="kotid" min="0" step="0.1" placeholder="2">
+              <input type="number" name="kotid" min="0" step="1" placeholder="2">
             </label>
             <label>Område
               <select name="omrade">
                 <option>Farsta</option>
                 <option>Södermalm</option>
                 <option>Vällingby</option>
+                <option>Östermalm</option>
+                <option>Norrmalm</option>
+                <option>Nacka</option>
+                <option>Bromma</option>
               </select>
             </label>
           </div>
@@ -147,33 +152,46 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     <div class="utrakning__text">
       <h2>Ingen magi. En uträkning.</h2>
       <p>Vi tar kötiden för området du vill bo i, drar av den tid du redan stått i kön och lägger till din ålder. Samma räkning görs för andra områden och nyproduktion, så du ser flera alternativ på en gång.</p>
-      <p class="liten">Under 2025 var snittkötiden för en vanlig hyresrätt 9 år. På Södermalm krävdes 21,6 år, men för en nybyggd lägenhet i Enskede-Årsta-Vantör räckte 4,2 år. Siffrorna visar hur det såg ut förra året, så svaret är en uppskattning, inte ett löfte.</p>
+      <p class="liten">Vi använder statistik från 2025 för vanliga hyresrätter i Bostadskön, alla antal rum, och visar ungefärliga snitt i hela år. Befintliga bostäder och nyproduktion räknas var för sig. Svaret är en uppskattning, inte ett löfte.</p>
+      <p class="liten">För Farsta, Södermalm, Vällingby, Östermalm och Norrmalm räknas kötiden som 2025 minus startåret för varje förmedlad bostad. Snittet avrundas till närmaste hela år. Uppgifterna gäller de enskilda stadsdelarna i <a href="https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/">Bostadsförmedlingens detaljstatistik</a>. Bromma gäller hela stadsdelsområdet och Nacka hela kommunen; där används <a href="https://bostad.stockholm.se/statistik/manadens-tips-jamfor-kotider-med-hjalp-av-var-karta/">publicerade medelkötider för 2025</a>, avrundade till hela år.</p>
+      <p class="liten" id="statistiknotering">Underlag för Farsta: 150 befintliga bostäder och 27 nyproducerade bostäder under 2025.</p>
     </div>
 
     <div class="rakning" id="rakning" aria-live="polite">
-      <div class="rad rad--rubrik"><span id="rub-info">22 år, 2 års kötid</span><span id="rub-omrade1">Södermalm</span><span id="rub-omrade2" tabindex="-1">Årsta</span></div>
-      <div class="rad"><span>Kötid för området</span><span id="kotid1">21,6 år</span><span id="kotid2">12,4 år</span></div>
+      <div class="rad rad--rubrik"><span id="rub-info">22 år, 2 års kötid</span><span id="rub-omrade1">Farsta</span><span id="rub-omrade2" tabindex="-1">Farsta (nyprod.)</span></div>
+      <div class="rad"><span>Kötid för området</span><span id="kotid1">13 år</span><span id="kotid2">5 år</span></div>
       <div class="rad"><span>− din kötid</span><span id="minus1">2 år</span><span id="minus2">2 år</span></div>
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
-      <div class="rad rad--summa"><span>Först i kön vid</span><span class="stor" id="summa1">42</span><span class="stor stor--vin" id="summa2">32</span></div>
+      <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">33</span><span class="stor stor--vin" id="summa2">25</span></div>
     </div>
   </section>
 
 </main>
 
 <script>
-  // Ungefärlig kötid (år) för vanlig hyresrätt respektive nyproduktion per område.
-  // Baserat på 2025 års snittsiffror som nämns i texten ovan (Södermalm 21,6 år,
-  // nyproduktion ned mot 4,2 år) – övriga områden är uppskattningar.
+  // Statistik kontrollerad 2026-10-06: år 2025, Bostadskön, vanlig hyresrätt,
+  // alla rum, Utan nyproduktion / Endast nyproduktion.
+  // https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/
+  // Samtliga intervall och resultatsidor ingår. Kötid = 2025 - startår;
+  // avrunda summan / antal bostäder till närmaste hela år:
+  // Farsta: 1880/150 = 13; nyproduktion: 130/27 = 5.
+  // Södermalm: 5072/222 = 23; nyproduktion: 1354/67 = 20.
+  // Vällingby: 898/85 = 11; Östermalm: 537/19 = 28; Norrmalm: 293/15 = 20.
+  // Ingen nyproduktion i dessa tre stadsdelars filtrerade underlag; null är inte 0.
+  // Bromma och Nacka: avrundade publicerade medelkötider, inte startårsmetoden.
+  // https://bostad.stockholm.se/statistik/manadens-tips-jamfor-kotider-med-hjalp-av-var-karta/
   var kotider = {
-    "Farsta":     { vanlig: 9.4,  ny: 3.2 },
-    "Södermalm":  { vanlig: 21.6, ny: 8.1 },
-    "Vällingby":  { vanlig: 11.8, ny: 4.2 }
+    "Farsta":     { vanlig: 13, ny: 5, antal: 150, antalNy: 27 },
+    "Södermalm":  { vanlig: 23, ny: 20, antal: 222, antalNy: 67 },
+    "Vällingby":  { vanlig: 11, ny: null, antal: 85, antalNy: 0 },
+    "Östermalm":  { vanlig: 28, ny: null, antal: 19, antalNy: 0 },
+    "Norrmalm":   { vanlig: 20, ny: null, antal: 15, antalNy: 0 },
+    "Nacka":      { vanlig: 6, ny: 5 }, // publicerat: 5,6 / 4,5 år
+    "Bromma":     { vanlig: 14, ny: 11 } // publicerat: 13,7 / 11,4 år
   };
 
   function formateraAr(tal) {
-    var avrundat = Math.round(tal * 10) / 10;
-    return avrundat.toString().replace(".", ",") + " år";
+    return Math.round(tal) + " år";
   }
 
   function raknaUtAlder() {
@@ -188,26 +206,32 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     var data = kotider[omrade] || kotider["Farsta"];
 
     var kvarVanlig = Math.max(data.vanlig - kotid, 0);
-    var kvarNy = Math.max(data.ny - kotid, 0);
+    var harNyproduktion = data.ny !== null;
+    var kvarNy = harNyproduktion ? Math.max(data.ny - kotid, 0) : null;
 
     var alderVanlig = alder + kvarVanlig;
-    var alderNy = alder + kvarNy;
+    var alderNy = harNyproduktion ? alder + kvarNy : null;
 
     document.getElementById("rub-info").textContent = alder + " år, " + formateraAr(kotid).replace(" år", "") + " års kötid";
     document.getElementById("rub-omrade1").textContent = omrade;
     document.getElementById("rub-omrade2").textContent = omrade + " (nyprod.)";
 
     document.getElementById("kotid1").textContent = formateraAr(data.vanlig);
-    document.getElementById("kotid2").textContent = formateraAr(data.ny);
+    document.getElementById("kotid2").textContent = harNyproduktion ? formateraAr(data.ny) : "Saknas";
 
     document.getElementById("minus1").textContent = formateraAr(kotid);
-    document.getElementById("minus2").textContent = formateraAr(kotid);
+    document.getElementById("minus2").textContent = harNyproduktion ? formateraAr(kotid) : "—";
 
     document.getElementById("alder1").textContent = alder + " år";
-    document.getElementById("alder2").textContent = alder + " år";
+    document.getElementById("alder2").textContent = harNyproduktion ? alder + " år" : "—";
 
     document.getElementById("summa1").textContent = Math.round(alderVanlig);
-    document.getElementById("summa2").textContent = Math.round(alderNy);
+    var nyResultat = document.getElementById("summa2");
+    nyResultat.textContent = harNyproduktion ? Math.round(alderNy) : "Underlag saknas";
+    nyResultat.classList.toggle("stor--saknas", !harNyproduktion);
+    document.getElementById("statistiknotering").textContent = data.antal
+      ? "Underlag för " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + (!harNyproduktion ? " Vi kan därför inte uppskatta en ålder för nyproduktion här." : "")
+      : "Statistiken gäller " + (omrade === "Nacka" ? "hela Nacka kommun" : "hela Bromma stadsdelsområde") + ".";
   }
 
   document.getElementById("nyproduktion-link").addEventListener("click", function () {
@@ -220,6 +244,8 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     raknaUtAlder();
     document.getElementById("rakning").scrollIntoView({ behavior: "smooth", block: "center" });
   });
+
+  raknaUtAlder();
 </script>
 
 </body>
