@@ -72,6 +72,17 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .stor--vin { color: var(--vin); }
 .stor.stor--saknas { font-family: var(--text); font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
 
+/* Nyproduktion */
+.nyproduktion { margin: 0 24px; padding: 64px; border-radius: 36px; background: var(--taupe-ljus); scroll-margin-top: 24px; }
+.nyproduktion > p { max-width: 700px; font-size: 17px; line-height: 1.65; }
+.nyproduktion__kort { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 28px 0; }
+.nyproduktion__kort article { padding: 28px; border-radius: 28px; background: var(--creme); }
+.nyproduktion h3 { margin: 0 0 16px; font-family: var(--rubrik); font-size: 22px; font-weight: 500; color: var(--petrol); }
+.nyproduktion ul { margin: 0; padding-left: 20px; }
+.nyproduktion li { margin-bottom: 16px; font-size: 17px; line-height: 1.6; }
+.nyproduktion li:last-child { margin-bottom: 0; }
+.nyproduktion .liten { font-size: 15px; color: var(--dampad); }
+
 /* Mobile */
 @media (max-width: 1100px) {
   .topp { grid-template-columns: 1fr; min-height: 0; padding: 24px; }
@@ -81,11 +92,15 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   .utrakning { flex-direction: column; gap: 48px; padding: 56px 32px; }
   .utrakning__text { width: auto; }
   .rakning { width: 100%; }
+  .nyproduktion { padding: 40px 32px; }
 }
 @media (max-width: 600px) {
   h1 { font-size: 36px; }
   h2 { font-size: 28px; }
   .formular__falt { grid-template-columns: 1fr; }
+  .nyproduktion { margin: 0 12px; padding: 40px 20px; border-radius: 28px; }
+  .nyproduktion__kort { grid-template-columns: 1fr; gap: 16px; }
+  .nyproduktion__kort article { padding: 24px 20px; }
   .top_picture { height: 380px; border-radius: 28px; }
   .utrakning { margin: 0 12px; padding: 40px 20px; border-radius: 28px; }
   .rakning { padding: 20px; }
@@ -112,7 +127,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
         </a>
         <nav aria-label="Huvudmeny">
           <a class="menu_link" href="#sa-funkar-det">Så funkar det</a>
-          <a class="menu_link" id="nyproduktion-link" href="#rakning">Nyproduktion</a>
+          <a class="menu_link" id="nyproduktion-link" href="#nyproduktion">Nyproduktion</a>
         </nav>
       </header>
 
@@ -166,6 +181,31 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
       <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">33</span><span class="stor stor--vin" id="summa2">25</span></div>
     </div>
+  </section>
+
+  <section class="nyproduktion" id="nyproduktion" aria-labelledby="nyproduktion-rubrik">
+    <h2 id="nyproduktion-rubrik">Nyproduktion – fördelar och nackdelar</h2>
+    <p>En nyproducerad hyresrätt är en nybyggd bostad där ingen har bott tidigare. Den kan vara ett alternativ för dig med kortare kötid, men jämför både hyran och inflyttningen innan du söker.</p>
+    <div class="nyproduktion__kort">
+      <article aria-labelledby="nyproduktion-fordelar">
+        <h3 id="nyproduktion-fordelar">Fördelar</h3>
+        <ul>
+          <li><strong>Ofta kortare kötid.</strong> Särskilt när många nya lägenheter förmedlas samtidigt i mindre centrala områden.</li>
+          <li><strong>Du blir den första hyresgästen.</strong> Ingen annan har bott i lägenheten tidigare.</li>
+          <li><strong>Flera bostäder i samma projekt.</strong> När flera lägenheter annonseras kan du jämföra storlek, planlösning och hyra inom samma projekt.</li>
+        </ul>
+      </article>
+      <article aria-labelledby="nyproduktion-nackdelar">
+        <h3 id="nyproduktion-nackdelar">Nackdelar och saker att tänka på</h3>
+        <ul>
+          <li><strong>Hyran kan vara högre.</strong> Jämför månadskostnaden med äldre bostäder och kontrollera vad som ingår i hyran.</li>
+          <li><strong>Inflyttningen kan ligga längre fram.</strong> Kommande projekt har preliminära datum. Kontrollera tidsplanen om du behöver flytta snart.</li>
+          <li><strong>Kortare kötid är ingen garanti.</strong> Efterfrågan varierar mellan områden och bostäder, och du måste uppfylla hyresvärdens villkor.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="liten">Läs mer hos Bostadsförmedlingen om <a href="https://bostad.stockholm.se/sa-gar-det-till/boendetyper/nyproduktion/">hur nyproduktion fungerar</a>, <a href="https://bostad.stockholm.se/statistik/hur-lang-tid-tar-det/">vad som påverkar kötiden</a> och <a href="https://bostad.stockholm.se/globalassets/broschyrer/ab2023/arsberattelse_2023_ta.pdf">hyror och efterfrågan i årsberättelsen 2023</a>.</p>
+    <p><a href="#kotidsform">Tillbaka till uträknaren</a></p>
   </section>
 
 </main>
@@ -251,14 +291,6 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       ? "Underlag för " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + (!harNyproduktion ? " Vi kan därför inte uppskatta en ålder för nyproduktion här." : "")
       : "Statistiken gäller " + (omrade === "Nacka" ? "hela Nacka kommun" : "hela Bromma stadsdelsområde") + ".";
   }
-
-  document.getElementById("nyproduktion-link").addEventListener("click", function (e) {
-    if (raknaUtAlder() === false) {
-      e.preventDefault();
-      return;
-    }
-    document.getElementById("rub-omrade2").focus({ preventScroll: true });
-  });
 
   document.getElementById("kotidsform").addEventListener("submit", function (e) {
     e.preventDefault();
