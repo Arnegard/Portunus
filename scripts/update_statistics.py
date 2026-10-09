@@ -57,26 +57,32 @@ for name,items in rows.items():
  allrows=[]
  for x in items:
   y=int(x['kotid_datum_kort'][:4]);assert 0<=2025-y<=100
-  allrows.append(dict(kommun=x['kommun'],omrade=x['stadsdel'],startar=y,id=x['lagenhet_id']))
+  allrows.append(dict(kommun=x['kommun'],omrade=x['stadsdel'],startar=y,hyra=x.get('hyra'),id=x['lagenhet_id']))
  (CACHE/('minimal-'+name+'.json')).write_text(json.dumps(allrows,ensure_ascii=False))
 print('Validated all page offsets, sizes and totals.',flush=True)
 
 import json,math,datetime
 from pathlib import Path
 areas=json.loads((CACHE/'areas-2025.json').read_text())
-kommuner={a['Kommun'].strip():{o.strip():dict(vanlig=None,ny=None,antal=0,antalNy=0) for o in a['Stadsdelar']} for a in areas}
-sums={};counts={}
+kommuner={a['Kommun'].strip():{o.strip():dict(vanlig=None,ny=None,antal=0,antalNy=0,hyra=None,hyraNy=None,antalHyra=0,antalHyraNy=0) for o in a['Stadsdelar']} for a in areas}
+sums={};counts={};rent_sums={};rent_counts={}
 for category in ['vanlig','ny']:
  rows=json.loads((CACHE/('minimal-'+category+'.json')).read_text())
  for row in rows:
   kommun,omrade=row['kommun'].strip(),row['omrade'].strip()
-  kommuner.setdefault(kommun,{}).setdefault(omrade,dict(vanlig=None,ny=None,antal=0,antalNy=0))
+  kommuner.setdefault(kommun,{}).setdefault(omrade,dict(vanlig=None,ny=None,antal=0,antalNy=0,hyra=None,hyraNy=None,antalHyra=0,antalHyraNy=0))
   key=kommun,omrade,category;sums[key]=sums.get(key,0)+2025-row['startar'];counts[key]=counts.get(key,0)+1
+  rent=row.get('hyra')
+  if isinstance(rent,(int,float)) and math.isfinite(rent) and rent>0:
+   rent_sums[key]=rent_sums.get(key,0)+rent;rent_counts[key]=rent_counts.get(key,0)+1
  for (kommun,omrade,cat),n in counts.items():
   kommuner[kommun][omrade][cat]=math.floor(sums[(kommun,omrade,cat)]/n+0.5)
   kommuner[kommun][omrade]['antal' if cat=='vanlig' else 'antalNy']=n
-meta=dict(ar=2025,kontrollerad=datetime.date.today().isoformat(),kalla='https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/',metod='Medelvärde av 2025 minus varje bostads köstartår, avrundat till närmaste hela år.',filter=dict(ko='Bostadskön',bostadstyp='Vanlig hyresrätt',rum='Alla'),totaler={cat:sum(n for key,n in counts.items() if key[2]==cat) for cat in ['vanlig','ny']},kommuner=kommuner)
-(ROOT/'statistics-2025.js').write_text('// Genererad från Bostadsförmedlingens offentliga detaljstatistik.\n// null betyder att inga bostäder matchade filtren, inte noll års kötid.\nvar statistik2025 = '+json.dumps(meta,ensure_ascii=False,indent=2)+';\n')
+  rent_count=rent_counts.get((kommun,omrade,cat),0)
+  kommuner[kommun][omrade]['antalHyra' if cat=='vanlig' else 'antalHyraNy']=rent_count
+  kommuner[kommun][omrade]['hyra' if cat=='vanlig' else 'hyraNy']=math.floor(rent_sums[(kommun,omrade,cat)]/rent_count+0.5) if rent_count else None
+meta=dict(ar=2025,kontrollerad=datetime.date.today().isoformat(),kalla='https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/',metod='Medelvärde av 2025 minus varje bostads köstartår, avrundat till närmaste hela år.',hyresmetod='Medelvärde av annonserad månadshyra för samma förmedlade bostäder, alla storlekar, avrundat till hela kronor. Saknade eller ogiltiga hyresbelopp räknas inte.',filter=dict(ko='Bostadskön',bostadstyp='Vanlig hyresrätt',rum='Alla'),totaler={cat:sum(n for key,n in counts.items() if key[2]==cat) for cat in ['vanlig','ny']},kommuner=kommuner)
+(ROOT/'statistics-2025.js').write_text('// Genererad från Bostadsförmedlingens offentliga detaljstatistik.\n// null betyder att underlag saknas, inte noll års kötid eller noll kronor i hyra.\nvar statistik2025 = '+json.dumps(meta,ensure_ascii=False,indent=2)+';\n')
 print('Municipalities:',len(kommuner),'areas:',sum(map(len,kommuner.values())),'totals:',meta['totaler'])
 for name in ['Farsta','Södermalm','Vällingby','Östermalm','Norrmalm']:print(name,kommuner['Stockholm'][name])
 for name in ['Fisksätra','Nacka Strand']:print(name,kommuner['Nacka'][name])
