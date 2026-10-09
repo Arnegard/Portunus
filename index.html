@@ -67,6 +67,8 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .rad span { min-width: 0; overflow-wrap: anywhere; }
 .rad span:not(:first-child) { text-align: right; }
 .rad--rubrik { padding-top: 0; padding-bottom: 14px; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dampad); }
+.rad--hyra { font-size: 16px; line-height: 1.4; }
+.rad--hyra span:not(:first-child) { font-size: 14px; }
 .rad--summa { border-bottom: none; align-items: baseline; padding-bottom: 0; padding-top: 20px; }
 .rad--summa span:first-child { font-weight: 600; }
 .stor { font-family: var(--rubrik); font-size: 60px; line-height: 1; font-weight: 500; color: var(--petrol); }
@@ -168,11 +170,13 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <p>Vi tar kötiden för området du vill bo i, drar av den tid du redan stått i kön och lägger till din ålder. Vi visar befintliga bostäder och nyproduktion bredvid varandra. Välj ett annat område för att jämföra.</p>
       <p class="liten">Vi använder statistik från 2025 för vanliga hyresrätter i Bostadskön, alla antal rum, och visar ungefärliga snitt i hela år. Befintliga bostäder och nyproduktion räknas var för sig. Svaret är en uppskattning, inte ett löfte.</p>
       <p class="liten">Kötiden räknas som 2025 minus startåret för varje förmedlad bostad. Snittet avrundas till närmaste hela år. Kommun- och områdesindelningen följer <a href="https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/">Bostadsförmedlingens detaljstatistik</a>. Om underlag saknas visar vi ingen uppskattning. Ett litet antal bostäder kan ge ett osäkert snitt.</p>
+      <p class="liten">Snitthyran är genomsnittlig månadshyra för de förmedlade bostäderna under 2025, avrundad till hela kronor. Alla lägenhetsstorlekar ingår, så snittet är ingen hyresuppgift för en viss storlek eller en aktuell annons.</p>
       <p class="liten" id="statistiknotering">Underlag för Farsta: 150 befintliga bostäder och 27 nyproducerade bostäder under 2025.</p>
     </div>
 
     <div class="rakning" id="rakning" aria-live="polite">
       <div class="rad rad--rubrik"><span id="rub-info">22 år, 2 års kötid</span><span id="rub-omrade1">Farsta</span><span id="rub-omrade2" tabindex="-1">Farsta (nyprod.)</span></div>
+      <div class="rad rad--hyra"><span>Genomsnittlig hyra</span><span id="hyra1">—</span><span id="hyra2">—</span></div>
       <div class="rad"><span>Kötid för området</span><span id="kotid1">13 år</span><span id="kotid2">5 år</span></div>
       <div class="rad"><span>− din kötid</span><span id="minus1">2 år</span><span id="minus2">2 år</span></div>
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
@@ -207,7 +211,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 
 </main>
 
-<script src="statistics-2025.js"></script>
+<script src="statistics-2025.js?v=20261009"></script>
 <script>
   // Data finns i statistics-2025.js och kräver ingen server eller inloggning.
   var kotider = statistik2025.kommuner;
@@ -228,6 +232,10 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   }
   uppdateraOmraden();
   form.omrade.value = "Farsta";
+
+  function formateraHyra(tal) {
+    return Number.isFinite(tal) && tal > 0 ? new Intl.NumberFormat("sv-SE").format(tal) + " kr/mån" : "Underlag saknas";
+  }
 
   function formateraAr(tal) {
     return Math.round(tal) + " år";
@@ -272,6 +280,8 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     document.getElementById("rub-omrade1").textContent = omrade;
     document.getElementById("rub-omrade2").textContent = omrade + " (nyprod.)";
 
+    document.getElementById("hyra1").textContent = formateraHyra(data.hyra);
+    document.getElementById("hyra2").textContent = formateraHyra(data.hyraNy);
     document.getElementById("kotid1").textContent = harVanlig ? formateraAr(data.vanlig) : "Saknas";
     document.getElementById("kotid2").textContent = harNyproduktion ? formateraAr(data.ny) : "Saknas";
 
@@ -288,7 +298,9 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     nyResultat.textContent = harNyproduktion ? Math.round(alderNy) : "Underlag saknas";
     nyResultat.classList.toggle("stor--saknas", !harNyproduktion);
     var total = data.antal + data.antalNy;
-    document.getElementById("statistiknotering").textContent = "Underlag för " + form.kommun.value + " – " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025."
+    var hyresnotering = Number.isInteger(data.antalHyra) && Number.isInteger(data.antalHyraNy) && (data.antalHyra !== data.antal || data.antalHyraNy !== data.antalNy)
+      ? " Hyressnittet bygger på " + data.antalHyra + " befintliga och " + data.antalHyraNy + " nyproducerade bostäder med giltig hyresuppgift." : "";
+    document.getElementById("statistiknotering").textContent = "Underlag för " + form.kommun.value + " – " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + hyresnotering
       + (total === 0 ? " Inga bostäder matchar dessa filter under 2025." : "")
       + ((data.antal > 0 && data.antal < 10) || (data.antalNy > 0 && data.antalNy < 10) ? " Färre än 10 bostäder i minst en kategori: tolka uppskattningen försiktigt." : "");
   }
