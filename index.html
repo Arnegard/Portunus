@@ -86,6 +86,16 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .nyproduktion li:last-child { margin-bottom: 0; }
 .nyproduktion .liten { font-size: 15px; color: var(--dampad); }
 
+/* Områdesförslag */
+.forslag { margin: 0 24px; padding: 48px 64px; border-radius: 36px; background: var(--taupe-ljus); }
+.forslag > p { font-size: 16px; line-height: 1.6; max-width: 760px; }
+.forslag__lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.forslag article { padding: 24px; border-radius: 24px; background: var(--creme); overflow-wrap: anywhere; }
+.forslag h3 { margin: 0 0 12px; font-family: var(--rubrik); font-size: 20px; color: var(--petrol); }
+.forslag article p { line-height: 1.6; margin: 10px 0; }
+.forslag article button { padding: 10px 16px; border: 1px solid var(--vin); border-radius: 20px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; }
+@media (max-width: 1100px) { .forslag { padding: 40px 32px; } }
+@media (max-width: 600px) { .forslag { margin: 0 12px; padding: 32px 20px; border-radius: 28px; } .forslag__lista { grid-template-columns: 1fr; } }
 /* Mobile */
 @media (max-width: 1100px) {
   .topp { grid-template-columns: 1fr; min-height: 0; padding: 24px; }
@@ -153,10 +163,17 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
             <label>Område / stadsdel
               <select name="omrade" aria-describedby="omrade-hjalp"></select>
             </label>
+            <label>Maxhyra i kr/mån (valfritt)
+              <input type="number" name="maxhyra" min="1" step="1" placeholder="7500" aria-describedby="budget-hjalp">
+            </label>
+            <label>Sök områdesförslag i
+              <select name="forslagScope"><option value="kommun">Vald kommun</option><option value="alla">Alla kommuner</option></select>
+            </label>
           </div>
+          <p id="budget-hjalp" style="margin: 0; font-size: 13px; line-height: 1.5;">Fyll i maxhyra för områdesförslag för ettor och tvåor. Hyran jämförs med områdets snitt för 2025.</p>
           <p id="omrade-hjalp" style="margin: 0; font-size: 13px; line-height: 1.5;">Välj kommun och sedan ett område. Kötiden gäller bara det valda området.</p>
           <p id="kotid-hjalp" style="margin: 0; font-size: 13px; line-height: 1.5;">Du kan stå i kön från 18 års ålder. Max kötid: 4 år vid 22 års ålder.</p>
-          <button class="knapp" type="submit">Räkna ut min ålder</button>
+          <button class="knapp" type="submit">Räkna och hitta områden</button>
         </form>
       </div>
     </div>
@@ -168,20 +185,27 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     <div class="utrakning__text">
       <h2>Ingen magi. En uträkning.</h2>
       <p>Vi tar kötiden för området du vill bo i, drar av den tid du redan stått i kön och lägger till din ålder. Vi visar befintliga bostäder och nyproduktion bredvid varandra. Välj ett annat område för att jämföra.</p>
-      <p class="liten">Vi använder statistik från 2025 för vanliga hyresrätter i Bostadskön, alla antal rum, och visar ungefärliga snitt i hela år. Befintliga bostäder och nyproduktion räknas var för sig. Svaret är en uppskattning, inte ett löfte.</p>
+      <p class="liten">Vi använder statistik från 2025 för vanliga hyresrätter i Bostadskön, endast ettor och tvåor, och visar ungefärliga snitt i hela år. Befintliga bostäder och nyproduktion räknas var för sig. Svaret är en uppskattning, inte ett löfte.</p>
       <p class="liten">Kötiden räknas som 2025 minus startåret för varje förmedlad bostad. Snittet avrundas till närmaste hela år. Kommun- och områdesindelningen följer <a href="https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/">Bostadsförmedlingens detaljstatistik</a>. Om underlag saknas visar vi ingen uppskattning. Ett litet antal bostäder kan ge ett osäkert snitt.</p>
-      <p class="liten">Snitthyran är genomsnittlig månadshyra för de förmedlade bostäderna under 2025, avrundad till hela kronor. Alla lägenhetsstorlekar ingår, så snittet är ingen hyresuppgift för en viss storlek eller en aktuell annons.</p>
-      <p class="liten" id="statistiknotering">Underlag för Farsta: 150 befintliga bostäder och 27 nyproducerade bostäder under 2025.</p>
+      <p class="liten">Snitthyran är genomsnittlig månadshyra för de förmedlade bostäderna under 2025, avrundad till hela kronor. Endast ettor och tvåor ingår. Ettor och tvåor räknas tillsammans, och snittet är ingen hyresuppgift för en aktuell annons.</p>
+      <p class="liten" id="statistiknotering">Underlaget gäller ettor och tvåor förmedlade under 2025.</p>
     </div>
 
     <div class="rakning" id="rakning" aria-live="polite">
       <div class="rad rad--rubrik"><span id="rub-info">22 år, 2 års kötid</span><span id="rub-omrade1">Farsta</span><span id="rub-omrade2" tabindex="-1">Farsta (nyprod.)</span></div>
       <div class="rad rad--hyra"><span>Genomsnittlig hyra</span><span id="hyra1">—</span><span id="hyra2">—</span></div>
-      <div class="rad"><span>Kötid för området</span><span id="kotid1">13 år</span><span id="kotid2">5 år</span></div>
+      <div class="rad"><span>Kötid för området</span><span id="kotid1">11 år</span><span id="kotid2">4 år</span></div>
       <div class="rad"><span>− din kötid</span><span id="minus1">2 år</span><span id="minus2">2 år</span></div>
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
-      <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">33</span><span class="stor stor--vin" id="summa2">25</span></div>
+      <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">31</span><span class="stor stor--vin" id="summa2">24</span></div>
     </div>
+  </section>
+
+  <section class="forslag" aria-labelledby="forslag-rubrik">
+    <h2 id="forslag-rubrik">Områden att undersöka</h2>
+    <p>Vi jämför din kötid och maxhyra med snitten för ettor och tvåor under 2025. Förslagen gäller områden, inte lediga lägenheter. En snitthyra under budget betyder inte att varje bostad där ryms inom budgeten.</p>
+    <p id="forslag-status" role="status">Fyll i maxhyra i uträknaren för att få förslag.</p>
+    <div id="forslag-lista" class="forslag__lista"></div>
   </section>
 
   <section class="nyproduktion" id="nyproduktion" aria-labelledby="nyproduktion-rubrik">
@@ -211,7 +235,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 
 </main>
 
-<script src="statistics-2025.js?v=20261009"></script>
+<script src="statistics-2025.js?v=20261010"></script>
 <script>
   // Data finns i statistics-2025.js och kräver ingen server eller inloggning.
   var kotider = statistik2025.kommuner;
@@ -255,7 +279,9 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     document.getElementById("kotid-hjalp").textContent = giltigAlder
       ? "Du kan stå i kön från 18 års ålder. Max kötid: " + maxKotid + " år vid " + alder + " års ålder."
       : "Ange en ålder mellan 18 och 99 år för att se din maximala kötid.";
-    return { alder: alder, kotid: kotid };
+    var budget = form.maxhyra.value === "" ? null : Number(form.maxhyra.value);
+    form.maxhyra.setCustomValidity(budget === null || (Number.isSafeInteger(budget) && budget > 0) ? "" : "Ange en maxhyra i hela kronor, större än 0.");
+    return { alder: alder, kotid: kotid, budget: budget };
   }
 
   function raknaUtAlder() {
@@ -297,12 +323,54 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     var nyResultat = document.getElementById("summa2");
     nyResultat.textContent = harNyproduktion ? Math.round(alderNy) : "Underlag saknas";
     nyResultat.classList.toggle("stor--saknas", !harNyproduktion);
+    visaForslag(varden);
     var total = data.antal + data.antalNy;
     var hyresnotering = Number.isInteger(data.antalHyra) && Number.isInteger(data.antalHyraNy) && (data.antalHyra !== data.antal || data.antalHyraNy !== data.antalNy)
       ? " Hyressnittet bygger på " + data.antalHyra + " befintliga och " + data.antalHyraNy + " nyproducerade bostäder med giltig hyresuppgift." : "";
     document.getElementById("statistiknotering").textContent = "Underlag för " + form.kommun.value + " – " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + hyresnotering
       + (total === 0 ? " Inga bostäder matchar dessa filter under 2025." : "")
       + ((data.antal > 0 && data.antal < 10) || (data.antalNy > 0 && data.antalNy < 10) ? " Färre än 10 bostäder i minst en kategori: tolka uppskattningen försiktigt." : "");
+  }
+
+  // Enkelt statistikfilter, ingen AI eller bostadsgaranti.
+  function hittaForslag(kotid, budget, kommun) {
+    var forslag = [];
+    Object.keys(kotider).forEach(function(k) {
+      if (kommun && k !== kommun) return;
+      Object.keys(kotider[k]).forEach(function(omrade) {
+        var data = kotider[k][omrade];
+        [{typ:"Befintliga bostäder", ko:data.vanlig, hyra:data.hyra, antal:data.antal, hyresantal:data.antalHyra},
+         {typ:"Nyproduktion", ko:data.ny, hyra:data.hyraNy, antal:data.antalNy, hyresantal:data.antalHyraNy}].forEach(function(kategori) {
+          if (!Number.isFinite(kategori.ko) || !Number.isFinite(kategori.hyra) || kategori.hyra <= 0 || kategori.hyra > budget || kategori.antal <= 0 || kategori.hyresantal <= 0) return;
+          forslag.push({kommun:k, omrade:omrade, typ:kategori.typ, ko:kategori.ko, hyra:kategori.hyra,
+            antal:kategori.antal, hyresantal:kategori.hyresantal, kvar:Math.max(kategori.ko-kotid,0)});
+        });
+      });
+    });
+    forslag.sort(function(a,b) { return a.kvar-b.kvar || Number(a.antal<10 || a.hyresantal<10)-Number(b.antal<10 || b.hyresantal<10) || a.hyra-b.hyra || b.antal-a.antal || (a.kommun+a.omrade+a.typ).localeCompare(b.kommun+b.omrade+b.typ,"sv"); });
+    return forslag;
+  }
+
+  function visaForslag(varden) {
+    var lista = document.getElementById("forslag-lista");
+    var status = document.getElementById("forslag-status");
+    lista.replaceChildren();
+    if (varden.budget === null) { status.textContent = "Fyll i maxhyra i uträknaren för att få förslag."; return; }
+    var kommun = form.forslagScope.value === "alla" ? null : form.kommun.value;
+    var matchningar = hittaForslag(varden.kotid, varden.budget, kommun);
+    status.textContent = matchningar.length ? "Visar " + Math.min(6,matchningar.length) + " av " + matchningar.length + " områdes- och bostadstypsförslag " + (kommun ? "i " + kommun : "i alla kommuner") + ". Minst beräknad återstående kötid visas först; vid lika tid prioriteras underlag på minst 10 bostäder och därefter lägre snitthyra."
+      : "Inga områden med tillräckliga uppgifter har en snitthyra inom din budget " + (kommun ? "i " + kommun : "i alla kommuner") + ". Prova en annan kommun, alla kommuner eller en högre maxhyra.";
+    matchningar.slice(0,6).forEach(function(forslag) {
+      var kort = document.createElement("article");
+      var rubrik = document.createElement("h3"); rubrik.textContent = forslag.omrade + " – " + forslag.kommun; kort.append(rubrik);
+      var fakta = document.createElement("p"); fakta.textContent = forslag.typ + ": " + formateraHyra(forslag.hyra) + " i snitt och " + formateraAr(forslag.ko) + " i kötid."; kort.append(fakta);
+      var tid = document.createElement("p"); tid.textContent = forslag.kvar === 0 ? "Din kötid når eller överstiger snittet för 2025. Det är ingen garanti för bostad."
+        : "Beräknad återstående kötid: " + formateraAr(forslag.kvar) + ". Uppskattad ålder: " + (varden.alder+forslag.kvar) + " år."; kort.append(tid);
+      var underlag = document.createElement("p"); underlag.textContent = "Underlag: " + forslag.antal + " bostäder" + (forslag.hyresantal !== forslag.antal ? ", varav " + forslag.hyresantal + " med hyresuppgift" : "") + "." + (forslag.antal<10 || forslag.hyresantal<10 ? " Litet underlag – tolka snittet försiktigt." : ""); kort.append(underlag);
+      var knapp = document.createElement("button"); knapp.type="button"; knapp.textContent="Visa i uträknaren";
+      knapp.addEventListener("click", function() { form.kommun.value=forslag.kommun; uppdateraOmraden(); form.omrade.value=forslag.omrade; if (raknaUtAlder() === false) return; document.getElementById("rakning").scrollIntoView({behavior:"smooth",block:"center"}); }); kort.append(knapp);
+      lista.append(kort);
+    });
   }
 
   document.getElementById("kotidsform").addEventListener("submit", function (e) {
