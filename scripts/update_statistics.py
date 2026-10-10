@@ -1,88 +1,99 @@
 #!/usr/bin/env python3
-"""Hämta alla statistikposter för 2025 och uppdatera statistics-2025.js.
-Kräver Python 3, använder endast standardbiblioteket. Rensa .statistics-cache
-om du vill hämta om redan sparade resultatsidor. Kör från valfri katalog.
+"""Hämta statistik för exakt 1 och 2 rum under 2025. Python 3, standardbiblioteket.
+Rensa .statistics-cache för att hämta om samtliga sidor. Avbrott kan återupptas.
 """
-import urllib.request,urllib.parse,json,time,math,concurrent.futures,pathlib
-BASE='https://bostad.stockholm.se/statistik/data/'
-ROOT=pathlib.Path(__file__).resolve().parent.parent
-CACHE=ROOT/'.statistics-cache'; CACHE.mkdir(exist_ok=True)
-def get(endpoint,params,key):
- f=CACHE/(key+'.json')
- if f.exists():return json.loads(f.read_text())
- for attempt in range(3):
-  try:
-   with urllib.request.urlopen(BASE+endpoint+'?'+urllib.parse.urlencode(params),timeout=60) as r: x=json.load(r)
-   f.write_text(json.dumps(x,ensure_ascii=False));return x
-  except Exception:
-   if attempt==2:raise
-   time.sleep(2)
-def params(kind):return dict(year=2025,queue='Bostadskön',area='',buildingType=kind,apartmentType='',rooms='')
-def chart(kind,name):return get('kotid-per-omrade',params(kind),'chart-'+name)
-def page(task):
- name,kind,group,num=task
- p=params(kind);p.update(group=group,page=num,sort=2)
- x=get('kotid-per-omrade-bostader',p,f'{name}-{group}-{num}');return task,x
-areas=get('omraden',dict(year=2025,queue='Bostadskön'),'areas')
-(ROOT/'.statistics-cache'/'areas-2025.json').write_text(json.dumps(areas,ensure_ascii=False))
-kinds=[('vanlig','Utan nyproduktion'),('ny','Endast nyproduktion')]
-charts={name:chart(kind,name) for name,kind in kinds}
-tasks=[]
-for name,kind in kinds:
- for label,count in zip(charts[name]['labels'],charts[name]['datasets'][0]['data']):
-  for n in range(1,math.ceil(count/10)+1):tasks.append((name,kind,label['group'],n))
-print('Pages:',len(tasks),'counts:',{n:sum(c['datasets'][0]['data']) for n,c in charts.items()},flush=True)
-completed=0;start=time.time();last=start
-with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
- for task,x in pool.map(page,tasks):
-  completed+=1
-  if time.time()-last>30 or completed==len(tasks):
-   print(f'{completed}/{len(tasks)} pages; {int(time.time()-start)} seconds',flush=True);last=time.time()
-# Strict pagination validation and aggregate only minimal fields.
-rows={n:[] for n,k in kinds}
-for name,kind in kinds:
- for label,count in zip(charts[name]['labels'],charts[name]['datasets'][0]['data']):
-  group=label['group'];items=[]
-  for num in range(1,math.ceil(count/10)+1):
-   x=page((name,kind,group,num))[1];assert x['total']==count,(name,group,x['total'],count)
-   assert x['offset']==(num-1)*10,(name,group,num,x['offset'])
-   batch=json.loads(x['objects']) if x['objects'] else []
-   assert len(batch)==min(10,count-(num-1)*10),(name,group,num,len(batch))
-   items.extend(batch)
-  assert len(items)==count
-  rows[name].extend(items)
-for name,items in rows.items():
- # Källan kan innehålla flera poster för samma lägenhets-ID.
- # Behåll källans poster så att underlaget stämmer med dess totalsiffror.
- allrows=[]
- for x in items:
-  y=int(x['kotid_datum_kort'][:4]);assert 0<=2025-y<=100
-  allrows.append(dict(kommun=x['kommun'],omrade=x['stadsdel'],startar=y,hyra=x.get('hyra'),id=x['lagenhet_id']))
- (CACHE/('minimal-'+name+'.json')).write_text(json.dumps(allrows,ensure_ascii=False))
-print('Validated all page offsets, sizes and totals.',flush=True)
+import concurrent.futures
+import datetime
+import json
+import math
+import pathlib
+import time
+import urllib.parse
+import urllib.request
 
-import json,math,datetime
-from pathlib import Path
-areas=json.loads((CACHE/'areas-2025.json').read_text())
-kommuner={a['Kommun'].strip():{o.strip():dict(vanlig=None,ny=None,antal=0,antalNy=0,hyra=None,hyraNy=None,antalHyra=0,antalHyraNy=0) for o in a['Stadsdelar']} for a in areas}
-sums={};counts={};rent_sums={};rent_counts={}
-for category in ['vanlig','ny']:
- rows=json.loads((CACHE/('minimal-'+category+'.json')).read_text())
- for row in rows:
-  kommun,omrade=row['kommun'].strip(),row['omrade'].strip()
-  kommuner.setdefault(kommun,{}).setdefault(omrade,dict(vanlig=None,ny=None,antal=0,antalNy=0,hyra=None,hyraNy=None,antalHyra=0,antalHyraNy=0))
-  key=kommun,omrade,category;sums[key]=sums.get(key,0)+2025-row['startar'];counts[key]=counts.get(key,0)+1
-  rent=row.get('hyra')
-  if isinstance(rent,(int,float)) and math.isfinite(rent) and rent>0:
-   rent_sums[key]=rent_sums.get(key,0)+rent;rent_counts[key]=rent_counts.get(key,0)+1
- for (kommun,omrade,cat),n in counts.items():
-  kommuner[kommun][omrade][cat]=math.floor(sums[(kommun,omrade,cat)]/n+0.5)
-  kommuner[kommun][omrade]['antal' if cat=='vanlig' else 'antalNy']=n
-  rent_count=rent_counts.get((kommun,omrade,cat),0)
-  kommuner[kommun][omrade]['antalHyra' if cat=='vanlig' else 'antalHyraNy']=rent_count
-  kommuner[kommun][omrade]['hyra' if cat=='vanlig' else 'hyraNy']=math.floor(rent_sums[(kommun,omrade,cat)]/rent_count+0.5) if rent_count else None
-meta=dict(ar=2025,kontrollerad=datetime.date.today().isoformat(),kalla='https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/',metod='Medelvärde av 2025 minus varje bostads köstartår, avrundat till närmaste hela år.',hyresmetod='Medelvärde av annonserad månadshyra för samma förmedlade bostäder, alla storlekar, avrundat till hela kronor. Saknade eller ogiltiga hyresbelopp räknas inte.',filter=dict(ko='Bostadskön',bostadstyp='Vanlig hyresrätt',rum='Alla'),totaler={cat:sum(n for key,n in counts.items() if key[2]==cat) for cat in ['vanlig','ny']},kommuner=kommuner)
-(ROOT/'statistics-2025.js').write_text('// Genererad från Bostadsförmedlingens offentliga detaljstatistik.\n// null betyder att underlag saknas, inte noll års kötid eller noll kronor i hyra.\nvar statistik2025 = '+json.dumps(meta,ensure_ascii=False,indent=2)+';\n')
-print('Municipalities:',len(kommuner),'areas:',sum(map(len,kommuner.values())),'totals:',meta['totaler'])
-for name in ['Farsta','Södermalm','Vällingby','Östermalm','Norrmalm']:print(name,kommuner['Stockholm'][name])
-for name in ['Fisksätra','Nacka Strand']:print(name,kommuner['Nacka'][name])
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CACHE = ROOT / '.statistics-cache'
+CACHE.mkdir(exist_ok=True)
+BASE = 'https://bostad.stockholm.se/statistik/data/'
+KINDS = {'vanlig': 'Utan nyproduktion', 'ny': 'Endast nyproduktion'}
+
+def get(endpoint, params, key):
+    path = CACHE / (key + '.json')
+    if path.exists():
+        return json.loads(path.read_text())
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(BASE + endpoint + '?' + urllib.parse.urlencode(params), timeout=50) as response:
+                result = json.load(response)
+            path.write_text(json.dumps(result, ensure_ascii=False))
+            return result
+        except Exception:
+            if attempt == 2:
+                raise
+            time.sleep(2)
+
+def params(kind, room):
+    return dict(year=2025, queue='Bostadskön', area='', buildingType=KINDS[kind], apartmentType='', rooms=room)
+
+def page(task):
+    kind, room, group, number = task
+    query = params(kind, room)
+    query.update(group=group, page=number, sort=2)
+    return get('kotid-per-omrade-bostader', query, f'small-{kind}-{room}-{group}-{number}')
+
+areas = get('omraden', dict(year=2025, queue='Bostadskön'), 'areas')
+charts = {}
+tasks = []
+for kind in KINDS:
+    for room in (1, 2):
+        chart = get('kotid-per-omrade', params(kind, room), f'small-chart-{kind}-{room}')
+        charts[kind, room] = chart
+        for label, count in zip(chart['labels'], chart['datasets'][0]['data']):
+            tasks.extend((kind, room, label['group'], n) for n in range(1, math.ceil(count / 10) + 1))
+print(f'{len(tasks)} resultatsidor för 1 och 2 rum.', flush=True)
+with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+    for i, result in enumerate(pool.map(page, tasks), 1):
+        if i % 50 == 0 or i == len(tasks):
+            print(f'{i}/{len(tasks)} sidor', flush=True)
+
+blank = lambda: dict(vanlig=None, ny=None, antal=0, antalNy=0, hyra=None, hyraNy=None, antalHyra=0, antalHyraNy=0)
+kommuner = {a['Kommun'].strip(): {o.strip(): blank() for o in a['Stadsdelar']} for a in areas}
+sums, counts, rent_sums, rent_counts = {}, {}, {}, {}
+for (kind, room), chart in charts.items():
+    for label, count in zip(chart['labels'], chart['datasets'][0]['data']):
+        group = label['group']
+        for number in range(1, math.ceil(count / 10) + 1):
+            result = page((kind, room, group, number))
+            assert result['total'] == count, (kind, room, group, 'total')
+            assert result['offset'] == (number - 1) * 10, 'offset'
+            rows = json.loads(result['objects']) if result['objects'] else []
+            assert len(rows) == min(10, count - (number - 1) * 10), 'sidstorlek'
+            for row in rows:
+                assert row['rum'] == room, 'fel antal rum'
+                kommun, omrade = row['kommun'].strip(), row['stadsdel'].strip()
+                kommuner.setdefault(kommun, {}).setdefault(omrade, blank())
+                key = kommun, omrade, kind
+                years = 2025 - int(row['kotid_datum_kort'][:4])
+                assert 0 <= years <= 100
+                sums[key] = sums.get(key, 0) + years
+                counts[key] = counts.get(key, 0) + 1
+                rent = row.get('hyra')
+                if isinstance(rent, (int, float)) and math.isfinite(rent) and rent > 0:
+                    rent_sums[key] = rent_sums.get(key, 0) + rent
+                    rent_counts[key] = rent_counts.get(key, 0) + 1
+for (kommun, omrade, kind), count in counts.items():
+    item = kommuner[kommun][omrade]
+    item[kind] = math.floor(sums[kommun, omrade, kind] / count + 0.5)
+    item['antal' if kind == 'vanlig' else 'antalNy'] = count
+    n = rent_counts.get((kommun, omrade, kind), 0)
+    item['antalHyra' if kind == 'vanlig' else 'antalHyraNy'] = n
+    item['hyra' if kind == 'vanlig' else 'hyraNy'] = math.floor(rent_sums[kommun, omrade, kind] / n + 0.5) if n else None
+# Behåll källans poster, även när lägenhets-ID återkommer, för att följa totalsiffrorna.
+meta = dict(ar=2025, kontrollerad=datetime.date.today().isoformat(),
+    kalla='https://bostad.stockholm.se/statistik/hyra-och-kotid-per-omrade/',
+    metod='Medelvärde av 2025 minus köstartår, avrundat till hela år.',
+    hyresmetod='Genomsnittlig månadshyra för samma ettor och tvåor, avrundad till hela kronor.',
+    filter=dict(ko='Bostadskön', bostadstyp='Vanlig hyresrätt', rum='1 och 2'),
+    totaler={kind: sum(n for key, n in counts.items() if key[2] == kind) for kind in KINDS}, kommuner=kommuner)
+(ROOT / 'statistics-2025.js').write_text('// Ettor och tvåor, 2025. null betyder att underlag saknas.\nvar statistik2025 = ' + json.dumps(meta, ensure_ascii=False, indent=2) + ';\n')
+print('Kontrollerade totalsiffror:', meta['totaler'], flush=True)
