@@ -86,6 +86,8 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .nyproduktion li:last-child { margin-bottom: 0; }
 .nyproduktion .liten { font-size: 15px; color: var(--dampad); }
 
+.forslag-lank { display: flex; align-items: center; justify-content: center; min-height: 56px; height: auto; margin-top: 28px; padding: 14px 16px; text-align: center; text-decoration: none; }
+
 /* Områdesförslag */
 .forslag { margin: 0 24px; padding: 48px 64px; border-radius: 36px; background: var(--taupe-ljus); }
 .forslag > p { font-size: 16px; line-height: 1.6; max-width: 760px; }
@@ -198,10 +200,11 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <div class="rad"><span>− din kötid</span><span id="minus1">2 år</span><span id="minus2">2 år</span></div>
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
       <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">31</span><span class="stor stor--vin" id="summa2">24</span></div>
+      <a class="knapp forslag-lank" href="#omraden-att-undersoka">Se områden att undersöka</a>
     </div>
   </section>
 
-  <section class="forslag" aria-labelledby="forslag-rubrik">
+  <section class="forslag" id="omraden-att-undersoka" aria-labelledby="forslag-rubrik">
     <h2 id="forslag-rubrik">Områden att undersöka</h2>
     <p>Vi jämför din kötid och maxhyra med snitten för ettor och tvåor under 2025. Förslagen gäller områden, inte lediga lägenheter. En snitthyra under budget betyder inte att varje bostad där ryms inom budgeten.</p>
     <p id="forslag-status" role="status">Fyll i maxhyra i uträknaren för att få förslag.</p>
