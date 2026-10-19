@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Portunus – Hur gammal är du när du får nyckeln?</title>
+<link rel="stylesheet" href="area-map.css?v=20261019">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -168,6 +169,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
         </a>
         <nav aria-label="Huvudmeny">
           <a class="menu_link" href="#sa-funkar-det">Så funkar det</a>
+          <a class="menu_link" href="#omradeskarta">Områdeskarta</a>
           <a class="menu_link" id="nyproduktion-link" href="#nyproduktion">Nyproduktion</a>
         </nav>
       </header>
@@ -228,6 +230,28 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">31</span><span class="stor stor--vin" id="summa2">24</span></div>
       <a class="knapp forslag-lank" href="#omraden-att-undersoka">Se områden att undersöka</a>
     </div>
+  </section>
+
+  <section class="area-map-section" id="omradeskarta" aria-labelledby="map-heading">
+    <h2 id="map-heading">Hitta ditt område på kartan</h2>
+    <p>Tryck på ett område för att se snitthyra och kötid.</p>
+    <div class="area-map-controls">
+      <label>Visa kommun<select id="map-municipality"><option value="">Alla kommuner</option></select></label>
+      <label>Bostadstyp<select id="map-housing"><option value="existing">Befintliga bostäder</option><option value="new">Nyproduktion</option></select></label>
+      <label class="map-check"><input type="checkbox" id="map-only-matches"> Bara områden inom mina val</label>
+      <button class="knapp" type="button" id="map-fit" disabled>Visa hela urvalet</button>
+    </div>
+    <div class="area-map-legend" aria-label="Markörernas färger">
+      <span><i class="map-match" aria-hidden="true"></i><span id="map-match-label">Din kötid når snittet</span></span>
+      <span><i class="map-other" aria-hidden="true"></i>Övriga med underlag</span>
+      <span><i class="map-missing" aria-hidden="true"></i>Underlag saknas</span>
+    </div>
+    <div class="area-map-frame">
+      <div id="area-map" role="region" aria-label="Interaktiv områdeskarta. Zooma med plus och minus och välj en områdesmarkör."></div>
+      <button class="knapp" type="button" id="map-load">Visa kartan</button>
+    </div>
+    <p id="map-status" role="status">Kartan laddas när du kommer hit.</p>
+    <p class="map-note">Ungefärliga lägen, inte områdesgränser eller lediga bostäder. Snitt för ettor och tvåor 2025, ingen bostadsgaranti. Lägesdata: <a href="https://www.geonames.org/">GeoNames</a>, <a href="https://sv.wikipedia.org/">Wikimedia</a> och <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>.</p>
   </section>
 
   <section class="forslag" id="omraden-att-undersoka" aria-labelledby="forslag-rubrik">
@@ -436,6 +460,8 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   raknaUtAlder();
 </script>
 
+<script src="map-locations.js?v=20261019"></script>
+<script src="area-map.js?v=20261019"></script>
 <script src="bot-config.js?v=20261019"></script>
 <script src="bot.js?v=20261019-conversation"></script>
 </body>
