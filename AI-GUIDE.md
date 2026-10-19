@@ -65,7 +65,7 @@ Använd den riktiga HTTPS-adressen utan extra sökväg. Detta är en publik adre
 1. Öppna hemsidan och fyll i ålder, kötid och eventuell maxhyra.
 2. Klicka **Fråga Portunus – AI-guide** längst ned till höger.
 3. Läs informationen, godkänn att frågan och formulärvalen skickas och slutför robotkontrollen.
-4. Ställ en kort fråga, till exempel ”Vad betyder mitt resultat?” eller ”Vilka områden passar mina val?”.
+4. Ställ en kort fråga, till exempel ”Vad betyder mitt resultat?”, ”Vilka områden passar mina val?” eller ”Jämför mitt val med Orminge – vad vinner jag på att välja billigare?”. Namngivna områden inom sökomfånget kan jämföras utan att ändra formuläret.
 5. Kontrollera API-förbrukningen i OpenAI och att automatisk påfyllning fortfarande är avstängd.
 
 Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstesterna använder simulerade svar; de visar inte kvaliteten på riktiga modelltexter.
@@ -73,7 +73,7 @@ Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstestern
 ## Hur skydden fungerar
 
 - Modell: `gpt-4.1-mini-2025-04-14`. Ett enda Responses API-anrop per godkänd fråga. Inga automatiska omförsök, externa verktyg, webbsökningar eller anropsloopar.
-- Frågan får vara högst 800 tecken, HTTP-kroppen högst 8 KiB och modellsvaret högst 400 genererade tokens. Kontexten innehåller bara valen i formuläret, valt områdes statistik och högst tre matchande alternativ.
+- Frågan får vara högst 800 tecken, HTTP-kroppen högst 8 KiB och modellsvaret högst 400 genererade tokens. Kontexten innehåller formulärvalen, en bedömning av valt område, en sammanräkning inom sökomfånget, statistik för högst tolv områden samt högst tre jämförelsekort. Valt område, områden som nämns i frågan och kortens områden prioriteras i underlaget. Urvalet är inte en fullständig lista över alla områden.
 - Högst fem frågor/minut och tjugo/dygn per session. Extra IP-gräns: tjugo/minut och hundra/dygn. Gränserna kombineras med Turnstile, vars värdnamn och action kontrolleras på servern. Samma wifi kan därför påverka flera användare.
 - CORS begränsar webbläsaranrop till rätt ursprung men är **inte** ett autentiseringsskydd på egen hand.
 - En gemensam Durable Object gör en beständig transaktion före varje AI-anrop. Vid 1 000 reservationer tillåts inga fler, även efter omstart, deploy eller nytt datum. Högst tre aktiva reservationer samtidigt; övergivna reservationer löper ut men deras använda anrop återbetalas aldrig.
@@ -84,6 +84,10 @@ Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstestern
 ## Statistik, svar och integritet
 
 Backend bygger en egen kontrollerad kopia av `statistics-2025.js` vid deploy. Uppdateras statistiken måste backend också driftsättas på nytt. Koden skickar inte klientens påstådda hyror eller färdiga förslag till AI:n. Belopp, kötider och underlag i korten kommer från backendens egna data. AI:n förklarar med kort text utan siffror; numeriska eller felaktigt formaterade textsvar ersätts av en neutral förklaring. Det eliminerar inte alla möjliga fel i AI-texten.
+
+Jämförelsen behåller det valda området som första kort om det finns kö- och hyresunderlag inom budget, även om andra områden är billigare. Kötid över den egna visas som beräknad återstående kötid, inte som en omedelbar matchning. Övriga kort prioriterar namngivna områden och jämför sedan hyra och historisk kötid i olika områden. Alternativ vars snitt redan nås av egen kötid prioriteras, och underlag på minst tio bostäder föredras när sådana alternativ finns. Ett område visas högst en gång, med den bostadstyp som rankas först. Det gör listan till en jämförelse, inte en fullständig förteckning över bostadstyper.
+
+Korten visar budgetmarginal, skillnad mellan egen kötid och historiskt snitt samt skillnader mot det valda området när det finns ett jämförbart kort. Dessa beräkningar görs av servern, inte av AI:n. AI-texten ska bedöma valt område först och förklara avvägningar snarare än bara räkna upp förslagen. Om vald snitthyra är över budget eller underlag saknas får modellen ändå bedömningen så att den kan förklara varför området inte får ett kort. Saknad statistik om nyproduktion betyder inte att det saknas nybyggda bostäder eller lediga annonser.
 
 Botten är en hjälp till det befintliga formuläret, inte en chatt som ändrar dina val automatiskt. Varje fråga är fristående. Bromma kan nämnas i frågan för att avgränsa till de Brommaområden vi har, inom valt kommunsök. Inga lediga annonser eller aktuella hyror hämtas.
 
@@ -111,3 +115,5 @@ npm run check
 ```
 
 Backendtesterna verifierar bland annat att reservation nummer 1 001 nekas, att samtidiga anrop inte överskrider taket, att ingen automatisk omförsökning görs, att betalningsfel pausar botten och att fel i lagring stoppar anrop. UI-testernas nätverksanrop är simulerade. Wrangler-kommandot är en dry run och publicerar inte en Worker. Riktig AI- och Turnstile-kvalitet, kontots faktiska kvoter samt visuell kontroll på mobil måste kontrolleras vid aktivering.
+
+Regressionstest för områdesjämförelsen: ålder 31, kötid 13, maxhyra 12 000, Nacka → Nacka Strand, endast vald kommun. För ”Vilka områden passar mina val?” ska Nacka Strand finnas först, med 1 058 kr/mån i budgetmarginal. Orminge ska visa 2 964 kr/mån lägre snitthyra jämfört med Nacka Strand. Efter deploy behöver ett riktigt svar också kontrolleras: texten ska bekräfta att Nacka Strand ryms i de historiska snitten och förklara alternativen, utan att lova en lägenhet. De automatiska testerna verifierar beräkningarna och modellens underlag, inte modellens faktiska ordval.
