@@ -52,6 +52,7 @@ export function candidates(input, stats) {
   }
   // Retain the visitor's baseline even when cheaper areas have no remaining queue.
   add(chosen,'Ditt val');
+  if (!chosen && !matches.some(x=>mentioned(input,x.area))) add(matches[0],matches[0]?.remaining===0?'Historiskt kösnitt uppnått':'Närmast din kötid');
   for (const row of matches.filter(x=>mentioned(input,x.area))) add(row,'Område du frågade om');
   // Compare different trade-offs, rather than returning three versions of the cheapest option.
   const immediate=matches.filter(x=>x.remaining===0);
