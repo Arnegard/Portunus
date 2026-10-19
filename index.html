@@ -232,18 +232,19 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     <button class="bot-open" id="bot-toggle" type="button" aria-expanded="false" aria-controls="bot-panel">Fråga Portunus – AI-guide</button>
     <div id="bot-panel" class="bot-panel" hidden>
       <h2>Hjälp med din första bostad</h2>
-      <p>Fråga om statistiken, nyproduktion eller områdesförslagen. Guiden använder dina nuvarande val i uträknaren. Ändra dem där om du vill söka med en annan kötid eller budget. Varje fråga behandlas separat.</p>
-      <p>Frågan och dina formulärval skickas till Cloudflare och OpenAI när du väljer att fråga. Portunus sparar ingen chatthistorik på servern. Skriv inte personnummer, kontaktuppgifter eller annan privat information. AI-text kan innehålla fel.</p>
+      <p>Beskriv var du vill bo, hur länge du har stått i kön och eventuell maxhyra. Du kan ställa följdfrågor. Chatten söker utifrån dina meddelanden och använder inte uträknarens val.</p>
+      <p>Din fråga och de senaste meddelandena skickas till Cloudflare och OpenAI. Chatthistoriken finns bara i minnet på den här sidan och försvinner när du laddar om eller väljer Ny chatt. Skriv inte personnummer, kontaktuppgifter eller annan privat information. AI-text kan innehålla fel.</p>
       <form id="bot-form">
         <label for="bot-question">Din fråga (högst 800 tecken)
-          <textarea id="bot-question" maxlength="800" required placeholder="Vilka områden kan passa mina val, och vad betyder resultatet?"></textarea>
+          <textarea id="bot-question" maxlength="800" required placeholder="Jag vill bo i Bromma, har 7 år i kön och kan betala högst 8 000 kr/mån. Vilka områden kan passa?"></textarea>
         </label>
-        <label class="bot-consent"><input type="checkbox" id="bot-consent" required> Jag vill skicka frågan och mina formulärval till AI-tjänsten.</label>
+        <label class="bot-consent"><input type="checkbox" id="bot-consent" required> Jag vill skicka frågan och de senaste chattmeddelandena till AI-tjänsten.</label>
         <div id="bot-challenge"></div>
         <button class="knapp" id="bot-send" type="submit" disabled>Fråga Portunus</button>
+        <button class="knapp" id="bot-reset" type="button">Ny chatt</button>
       </form>
       <p id="bot-status" role="status">AI-guiden laddas när du öppnar den.</p>
-      <div id="bot-log" aria-label="Senaste frågan och svaret"></div>
+      <div id="bot-log" aria-label="Din chatt med Portunus" aria-live="polite"></div>
     </div>
   </section>
 
@@ -425,6 +426,6 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 </script>
 
 <script src="bot-config.js?v=20261019"></script>
-<script src="bot.js?v=20261019"></script>
+<script src="bot.js?v=20261019-chat"></script>
 </body>
 </html>
