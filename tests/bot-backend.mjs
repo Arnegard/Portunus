@@ -5,7 +5,7 @@ if (!globalThis.crypto) globalThis.crypto=webcrypto;
 import stats from '../backend/generated-data.mjs';
 import worker, { BotGate } from '../backend/worker.mjs';
 import { reserve, validateInput, candidates, modelRequest, safeAnswer, TOTAL_LIMIT } from '../backend/logic.mjs';
-import {validateChatInput,chatRequest,chatResponse,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
+import {validateChatInput,chatRequest,chatResponse,renderAnswer,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
 const input=(patch={})=>({question:'Vilka områden passar?',session:crypto.randomUUID(),token:'valid-proof',consent:true,age:25,queue:7,budget:8000,municipality:'Stockholm',area:'Farsta',scope:'kommun',...patch});
 class Storage {
   data=new Map(); tail=Promise.resolve(); alarm=null;
@@ -20,6 +20,22 @@ async function release(storage,id){await storage.transaction(async tx=>{const g=
 const search=(patch={})=>({queue:7,budget:8000,region:'bromma',municipalities:[],areaIds:[],referenceAreaId:null,housing:'all',sort:'balanced',showResults:true,...patch});
 const free=(patch={})=>validateChatInput({mode:'chat',question:'Jag vill bo i Bromma, har 7 år i kön och maxhyra 8000 kr.',session:crypto.randomUUID(),token:'valid-proof',consent:true,history:[],...patch});
 const provider=(value)=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(value)}]}]});
+
+test('general Östermalm question gets verified queue time directly in prose without own queue or budget',()=>{
+ const row=catalog(stats).find(x=>x.area==='Östermalm');
+ const result=chatResponse(provider({search:search({queue:null,budget:null,region:'all',areaIds:[row.id],showResults:false}),answer:`På Östermalm var kösnittet {{${row.id}:existing:queue}} år för ettor och tvåor. Det är ett historiskt snitt.`}),stats);
+ assert.equal(result.answer,'På Östermalm var kösnittet 26 år för ettor och tvåor. Det är ett historiskt snitt.');
+});
+test('personal recommendation can quote verified rent without a user-supplied max rent',()=>{
+ const row=catalog(stats).find(x=>x.municipality==='Solna'&&x.area==='Huvudsta');
+ const result=chatResponse(provider({search:search({queue:10,budget:null,region:'all',areaIds:[row.id]}),answer:`Huvudsta kan vara värt att undersöka: snittet var {{${row.id}:existing:queue}} år och hyran {{${row.id}:existing:rent}} kr/mån.`}),stats);
+ assert.match(result.answer,/10 år/);assert.match(result.answer,/8\s363 kr\/mån/);
+});
+test('inline numerical facts reject invented values, nonexistent evidence and malformed placeholders',()=>{
+ const row=catalog(stats).find(x=>x.area==='Östermalm');
+ for(const text of ['Du får en lägenhet om 2 år.',`{{${row.id}:new:queue}} år`,'{{9999:existing:rent}} kr','{{ownQueue}}','{{budget}}','{{not-a-field}}','{{1:existing:queue}', '<script>bad</script>'])assert.throws(()=>renderAnswer(text,search({queue:null,budget:null}),stats));
+ assert.equal(renderAnswer(`{{${row.id}:existing:remaining}} år`,search({queue:10}),stats),'16 år');
+});
 
 test('free chat does not require calculator fields; history and consent have bounded validation',()=>{
  assert.equal(free({age:1,queue:99999,municipality:'invented'}).mode,'chat');

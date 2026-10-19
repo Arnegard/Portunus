@@ -103,17 +103,26 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .bot-open { position: fixed; right: 24px; bottom: 20px; z-index: 20; box-shadow: 0 8px 28px rgba(0,0,0,.16); max-width: calc(100vw - 24px); padding: 14px 24px; border: 1px solid var(--vin); border-radius: 999px; color: var(--vin); background: var(--falt); font: inherit; font-weight: 600; cursor: pointer; }
 .bot [hidden] { display: none; }
 .bot-panel { position: fixed; z-index: 20; right: 24px; bottom: 88px; width: min(440px, calc(100vw - 48px)); max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px); overflow-y: auto; overscroll-behavior: contain; padding: 24px; background: var(--creme); border: 1px solid var(--kant); border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
-.bot-panel h2 { font-size: 24px; }
-.bot p { line-height: 1.6; }
-.bot form { display: grid; gap: 16px; }
+.bot-panel { display: flex; flex-direction: column; height: min(680px, calc(100vh - 112px)); height: min(680px, calc(100dvh - 112px)); }
+.bot-panel h2 { font-size: 22px; margin: 0 0 8px; }
+.bot p { line-height: 1.4; margin: 8px 0; font-size: 14px; }
+.bot form { display: grid; gap: 10px; }
 .bot label { display: block; line-height: 1.5; }
-.bot textarea { display: block; width: 100%; min-height: 100px; margin-top: 8px; padding: 14px; border: 1px solid var(--kant); border-radius: 16px; background: var(--falt); font: inherit; font-size: 16px; resize: vertical; }
+.bot textarea { display: block; width: 100%; min-height: 68px; margin-top: 6px; padding: 10px; border: 1px solid var(--kant); border-radius: 12px; background: var(--falt); font: inherit; font-size: 16px; resize: vertical; }
 .bot-consent { display: flex !important; gap: 10px; align-items: flex-start; }
 .bot-consent input { margin-top: 5px; }
 .bot button:disabled { opacity: .6; cursor: default; }
-.bot-message, .bot-card { padding: 20px; margin-top: 16px; border-radius: 20px; background: var(--falt); overflow-wrap: anywhere; }
-.bot-card h3 { margin: 0; font-size: 18px; }
-.bot-card button { padding: 10px 16px; border: 1px solid var(--vin); border-radius: 20px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; }
+.bot-message { padding: 12px; margin-top: 8px; border-radius: 12px; background: var(--falt); overflow-wrap: anywhere; }
+.bot-message-user { margin-left: 32px; background: white; }
+.bot-message strong { font-size: 12px; }
+.bot-message p { margin: 4px 0; font-size: 15px; }
+.bot summary { cursor: pointer; font-size: 14px; line-height: 1.4; }
+.bot details { margin: 8px 0; }
+.bot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.bot-actions .knapp { padding: 10px 16px; }
+.bot-info { margin-bottom: 8px !important; }
+.bot #bot-log { flex: 1; min-height: 60px; max-height: 36dvh; overflow-y: auto; overscroll-behavior: contain; margin-bottom: 12px; }
+.bot .bot-caveat { font-size: 12px; }
 @media (max-width: 600px) { .bot-open { right: 12px; bottom: 12px; } .bot-panel { right: 12px; left: 12px; bottom: 80px; width: auto; max-height: calc(100vh - 104px); max-height: calc(100dvh - 104px); padding: 20px 16px; } }
 /* Mobile */
 @media (max-width: 1100px) {
@@ -231,20 +240,22 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   <section class="bot" aria-label="Fråga Portunus">
     <button class="bot-open" id="bot-toggle" type="button" aria-expanded="false" aria-controls="bot-panel">Fråga Portunus – AI-guide</button>
     <div id="bot-panel" class="bot-panel" hidden>
-      <h2>Hjälp med din första bostad</h2>
-      <p>Beskriv var du vill bo, hur länge du har stått i kön och eventuell maxhyra. Du kan ställa följdfrågor. Chatten söker utifrån dina meddelanden och använder inte uträknarens val.</p>
-      <p>Din fråga och de senaste meddelandena skickas till Cloudflare och OpenAI. Chatthistoriken finns bara i minnet på den här sidan och försvinner när du laddar om eller väljer Ny chatt. Skriv inte personnummer, kontaktuppgifter eller annan privat information. AI-text kan innehålla fel.</p>
+      <h2>Fråga Portunus</h2>
+      <p>Fråga om områden, kötid eller hyra.</p>
+      <details class="bot-info"><summary>Om chatten och dina uppgifter</summary><p>Chatten använder inte uträknarens val. Din fråga och de senaste meddelandena skickas till Cloudflare och OpenAI. Historiken försvinner vid omladdning eller Ny chatt. Skriv inga privata uppgifter. AI-text kan innehålla fel.</p></details>
+      <div id="bot-log" aria-label="Din chatt med Portunus" aria-live="polite"></div>
       <form id="bot-form">
-        <label for="bot-question">Din fråga (högst 800 tecken)
-          <textarea id="bot-question" maxlength="800" required placeholder="Jag vill bo i Bromma, har 7 år i kön och kan betala högst 8 000 kr/mån. Vilka områden kan passa?"></textarea>
+        <label for="bot-question">Din fråga
+          <textarea id="bot-question" maxlength="800" required placeholder="Hur lång är kötiden på Östermalm?"></textarea>
         </label>
-        <label class="bot-consent"><input type="checkbox" id="bot-consent" required> Jag vill skicka frågan och de senaste chattmeddelandena till AI-tjänsten.</label>
+        <label class="bot-consent"><input type="checkbox" id="bot-consent" required> Jag godkänner att chatten skickas till OpenAI och Cloudflare.</label>
         <div id="bot-challenge"></div>
-        <button class="knapp" id="bot-send" type="submit" disabled>Fråga Portunus</button>
+        <div class="bot-actions"><button class="knapp" id="bot-send" type="submit" disabled>Skicka</button>
         <button class="knapp" id="bot-reset" type="button">Ny chatt</button>
+        </div>
       </form>
       <p id="bot-status" role="status">AI-guiden laddas när du öppnar den.</p>
-      <div id="bot-log" aria-label="Din chatt med Portunus" aria-live="polite"></div>
+      <p class="bot-caveat">Historiska snitt för ettor och tvåor 2025, ingen bostadsgaranti.</p>
     </div>
   </section>
 
@@ -426,6 +437,6 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 </script>
 
 <script src="bot-config.js?v=20261019"></script>
-<script src="bot.js?v=20261019-chat"></script>
+<script src="bot.js?v=20261019-conversation"></script>
 </body>
 </html>
