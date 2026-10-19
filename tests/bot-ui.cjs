@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');const {webcrypto}=require('node:crypto');
-function element(){return {hidden:false,value:'',checked:false,disabled:false,textContent:'',children:[],handlers:{},attributes:{},className:'',append(...x){for(const e of x)e.parent=this;this.children.push(...x);if(this.isHead)for(const e of x)queueMicrotask(()=>e.onload());},remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.handlers[k]=fn;},setAttribute(k,v){this.attributes[k]=v;},reportValidity(){return true;},scrollIntoView(){this.scrolled=true;}};}
+function element(){return {scrollHeight:100,scrollTop:0,hidden:false,value:'',checked:false,disabled:false,textContent:'',children:[],handlers:{},attributes:{},className:'',append(...x){for(const e of x)e.parent=this;this.children.push(...x);if(this.isHead)for(const e of x)queueMicrotask(()=>e.onload());},remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.handlers[k]=fn;},setAttribute(k,v){this.attributes[k]=v;},reportValidity(){return true;},scrollIntoView(){this.scrolled=true;}};}
 function setup(endpoint){const els={},document={getElementById(id){return els[id] ||= element()},createElement(){return element()},head:element()};document.head.isHead=true;document.getElementById('bot-panel').hidden=true;document.getElementById('bot-consent').checked=true;document.getElementById('bot-question').value='Vad betyder mitt resultat?';
  const form=document.getElementById('kotidsform');for(const [k,v]of Object.entries({kommun:'Stockholm',omrade:'Farsta',forslagScope:'kommun'}))form[k]={value:v};
  const requests=[];let resets=0,proof;
@@ -22,7 +22,7 @@ test('follow-up sends recent conversation; new chat clears it without reading th
  assert.deepEqual(JSON.parse(x.requests.at(-1).options.body).history,[]);
 });
 test('unconfigured bot makes no calls and calculator remains accessible',async()=>{const x=setup('');x.els['bot-toggle'].handlers.click();await settle();assert.equal(x.requests.length,0);assert(x.els['bot-status'].textContent.includes('inte tillgänglig'));});
-test('long conversations retain only bounded recent history and three visible exchanges',async()=>{
+test('long conversations retain only bounded recent history and three ordinary chat exchanges',async()=>{
  const x=setup('https://bot.example/');x.els['bot-toggle'].handlers.click();await settle();
  for(let i=0;i<6;i++){
   x.prove();x.els['bot-question'].value='å'.repeat(799)+i;
@@ -31,25 +31,21 @@ test('long conversations retain only bounded recent history and three visible ex
   assert(body.history.length<=4);assert(new TextEncoder().encode(JSON.stringify(body.history)).length<=4096);
   assert(new TextEncoder().encode(x.requests.at(-1).options.body).length<=8192);
  }
- assert.equal(x.els['bot-log'].children.length,3);
+ assert.equal(x.els['bot-log'].children.length,3);assert(x.els['bot-log'].children.every(t=>t.className==='bot-turn'));
 });
 test('open/close, proof, consent and calculator-independent request',async()=>{const x=setup('https://bot.example/');x.els['bot-toggle'].handlers.click();await settle();assert.equal(x.els['bot-panel'].hidden,false);assert.equal(x.els['bot-send'].disabled,false);
  await x.els['bot-form'].handlers.submit({preventDefault(){}});assert.equal(x.requests.filter(r=>r.url.endsWith('/chat')).length,1);const body=JSON.parse(x.requests[1].options.body);assert.equal(body.consent,true);assert.equal(body.mode,'chat');assert.equal(body.age,undefined);assert.equal(body.budget,undefined);assert.equal(body.municipality,undefined);assert.deepEqual(body.history,[]);assert.equal(body.token,'verified-token');assert(!body.apiKey);assert.equal(x.resets,1);assert.equal(x.els['bot-send'].disabled,true);
- assert(x.els['bot-log'].children.at(-1).scrolled);
+ assert.equal(x.els['bot-log'].scrollTop,x.els['bot-log'].scrollHeight);
  x.els['bot-toggle'].handlers.click();assert.equal(x.els['bot-panel'].hidden,true);
 });
 test('failed request is not automatically retried and renders message as text',async()=>{const x=setup('https://bot.example/');x.els['bot-toggle'].handlers.click();await settle();x.ctx.fetch=async()=>({ok:false,json:async()=>({error:'<img src=x> gränsen nådd'})});await x.els['bot-form'].handlers.submit({preventDefault(){}});assert.equal(x.els['bot-status'].textContent,'<img src=x> gränsen nådd');assert.equal(x.resets,1);assert.equal(x.els['bot-send'].disabled,true);});
-test('comparison cards show verified budget and queue differences; new reply starts at the top',async()=>{
+test('ordinary chat displays the answer directly without cards or extra summaries',async()=>{
  const x=setup('https://bot.example/');x.els['bot-toggle'].handlers.click();await settle();
- x.ctx.fetch=async()=>({ok:true,json:async()=>({answer:'Ditt val är också värt att undersöka.',cards:[
-  {municipality:'Nacka',area:'Nacka Strand',type:'Befintliga bostäder',rent:10942,queue:13,remaining:0,count:13,rentCount:13,reason:'Ditt val',budgetMargin:1058,queueMargin:0},
-  {municipality:'Nacka',area:'Orminge',type:'Befintliga bostäder',rent:7978,queue:4,remaining:0,count:81,rentCount:81,reason:'Jämför hyra',budgetMargin:4022,queueMargin:9,comparison:{area:'Nacka Strand',type:'Befintliga bostäder',rentSaving:2964,queueSaving:9}}
- ]})});
+ x.ctx.fetch=async()=>({ok:true,json:async()=>({answer:'På Östermalm var kösnittet 26 år.',summary:'Extra söktext',scopeNote:'Extra geografi',status:'Extra text',cards:[{area:'Östermalm',rent:8695}]})});
  await x.els['bot-form'].handlers.submit({preventDefault(){}});
- const cards=x.els['bot-log'].children.at(-1).children.slice(-2);
- assert(cards[0].children[1].textContent.startsWith('Ditt val.'));
- assert.match(cards[0].children[2].textContent,/1\s058 kr\/mån under din maxhyra/);
- assert.match(cards[1].children[2].textContent,/2\s964 kr\/mån lägre snitthyra/);
- assert(cards[1].children[2].textContent.includes('9 år kortare historisk kötid'));
- assert(x.els['bot-log'].children.at(-1).scrolled);
+ const turn=x.els['bot-log'].children.at(-1);
+ assert.equal(turn.children.length,2);assert.equal(turn.children[0].children[0].textContent,'Du');
+ assert.equal(turn.children[1].children[1].textContent,'På Östermalm var kösnittet 26 år.');
+ assert(!turn.children.some(x=>x.className==='bot-card'||x.className==='bot-evidence'));
+ assert.equal(x.els['bot-log'].scrollTop,x.els['bot-log'].scrollHeight);
 });
