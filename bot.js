@@ -21,7 +21,16 @@
       // All values originate in the backend's bundled statistics, never in AI prose.
       var box = document.createElement('article'); box.className = 'bot-card';
       var heading = document.createElement('h3'); heading.textContent = item.area + ' – ' + item.municipality;
-      var text = document.createElement('p'); text.textContent = item.type + ': ' + new Intl.NumberFormat('sv-SE').format(item.rent) + ' kr/mån i snitt. Kötid: ' + item.queue + ' år. Beräknat kvar: ' + item.remaining + ' år.';
+      var text = document.createElement('p'); text.textContent = (item.reason ? item.reason + '. ' : '') + item.type + ': ' + new Intl.NumberFormat('sv-SE').format(item.rent) + ' kr/mån i snitt. Kötid: ' + item.queue + ' år. Beräknat kvar: ' + item.remaining + ' år.';
+      var comparison = document.createElement('p');
+      var money = function (value) { return new Intl.NumberFormat('sv-SE').format(value); };
+      if (Number.isFinite(item.budgetMargin) && Number.isFinite(item.queueMargin)) {
+        comparison.textContent = money(item.budgetMargin) + ' kr/mån under din maxhyra. ' + (item.queueMargin >= 0 ? (item.queueMargin === 0 ? 'Din kötid motsvarar det historiska snittet.' : 'Din kötid är ' + item.queueMargin + ' år längre än det historiska snittet.') : 'Din kötid är ' + Math.abs(item.queueMargin) + ' år kortare än det historiska snittet.');
+      }
+      var delta = item.comparison;
+      if (delta && Number.isFinite(delta.rentSaving) && Number.isFinite(delta.queueSaving)) {
+        comparison.textContent += ' Jämfört med ' + delta.area + ' (' + delta.type + '): ' + (delta.rentSaving === 0 ? 'samma snitthyra' : money(Math.abs(delta.rentSaving)) + ' kr/mån ' + (delta.rentSaving > 0 ? 'lägre' : 'högre') + ' snitthyra') + ' och ' + (delta.queueSaving === 0 ? 'samma historiska kötid.' : Math.abs(delta.queueSaving) + ' år ' + (delta.queueSaving > 0 ? 'kortare' : 'längre') + ' historisk kötid.');
+      }
       var note = document.createElement('p'); note.textContent = 'Underlag: ' + item.count + ' bostäder. ' + (item.count < 10 || item.rentCount < 10 ? 'Litet underlag. ' : '') + 'Historiska snitt för ettor och tvåor 2025, ingen garanti för bostad.';
       var button = document.createElement('button'); button.type = 'button'; button.textContent = 'Visa i uträknaren';
       button.addEventListener('click', function () {
@@ -31,7 +40,9 @@
         if (raknaUtAlder() === false) return;
         document.getElementById('rakning').scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
-      box.append(heading, text, note, button); log.append(box);
+      box.append(heading, text);
+      if (comparison.textContent) box.append(comparison);
+      box.append(note, button); log.append(box);
     });
   }
   async function initialise() {
@@ -83,7 +94,7 @@
       if (!response.ok) throw Error(result.error || 'AI-guiden kunde inte svara. Försök igen senare.');
       if (typeof result.answer !== 'string' || !Array.isArray(result.cards)) throw Error('Svaret kunde inte visas.');
       entry('Portunus – AI-svar', result.answer); cards(result.cards);
-      panel.scrollTop = panel.scrollHeight;
+      panel.scrollTop = 0;
       status.textContent = 'Svaret är klart. AI-text kan innehålla fel; kortens siffror kommer från statistiken.';
     } catch (error) {
       status.textContent = error.name === 'TimeoutError' ? 'Svaret tog för lång tid. Inget nytt försök skickas automatiskt.' : error.message;
