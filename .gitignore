@@ -1,2 +1,13 @@
 .statistics-cache/
 __pycache__/
+
+# AI backend: hemligheter, beroenden och genererad statistik
+backend/node_modules/
+backend/.wrangler/
+backend/.build/
+backend/generated-data.mjs
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+backend/.config/

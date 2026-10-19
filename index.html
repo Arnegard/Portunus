@@ -98,6 +98,23 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .forslag article button { padding: 10px 16px; border: 1px solid var(--vin); border-radius: 20px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; }
 @media (max-width: 1100px) { .forslag { padding: 40px 32px; } }
 @media (max-width: 600px) { .forslag { margin: 0 12px; padding: 32px 20px; border-radius: 28px; } .forslag__lista { grid-template-columns: 1fr; } }
+/* AI-guide */
+.bot { margin: 0; }
+.bot-open { position: fixed; right: 24px; bottom: 20px; z-index: 20; box-shadow: 0 8px 28px rgba(0,0,0,.16); max-width: calc(100vw - 24px); padding: 14px 24px; border: 1px solid var(--vin); border-radius: 999px; color: var(--vin); background: var(--falt); font: inherit; font-weight: 600; cursor: pointer; }
+.bot [hidden] { display: none; }
+.bot-panel { position: fixed; z-index: 20; right: 24px; bottom: 88px; width: min(440px, calc(100vw - 48px)); max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px); overflow-y: auto; overscroll-behavior: contain; padding: 24px; background: var(--creme); border: 1px solid var(--kant); border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
+.bot-panel h2 { font-size: 24px; }
+.bot p { line-height: 1.6; }
+.bot form { display: grid; gap: 16px; }
+.bot label { display: block; line-height: 1.5; }
+.bot textarea { display: block; width: 100%; min-height: 100px; margin-top: 8px; padding: 14px; border: 1px solid var(--kant); border-radius: 16px; background: var(--falt); font: inherit; font-size: 16px; resize: vertical; }
+.bot-consent { display: flex !important; gap: 10px; align-items: flex-start; }
+.bot-consent input { margin-top: 5px; }
+.bot button:disabled { opacity: .6; cursor: default; }
+.bot-message, .bot-card { padding: 20px; margin-top: 16px; border-radius: 20px; background: var(--falt); overflow-wrap: anywhere; }
+.bot-card h3 { margin: 0; font-size: 18px; }
+.bot-card button { padding: 10px 16px; border: 1px solid var(--vin); border-radius: 20px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; }
+@media (max-width: 600px) { .bot-open { right: 12px; bottom: 12px; } .bot-panel { right: 12px; left: 12px; bottom: 80px; width: auto; max-height: calc(100vh - 104px); max-height: calc(100dvh - 104px); padding: 20px 16px; } }
 /* Mobile */
 @media (max-width: 1100px) {
   .topp { grid-template-columns: 1fr; min-height: 0; padding: 24px; }
@@ -209,6 +226,25 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     <p>Vi jämför din kötid och maxhyra med snitten för ettor och tvåor under 2025. Förslagen gäller områden, inte lediga lägenheter. En snitthyra under budget betyder inte att varje bostad där ryms inom budgeten.</p>
     <p id="forslag-status" role="status">Fyll i maxhyra i uträknaren för att få förslag.</p>
     <div id="forslag-lista" class="forslag__lista"></div>
+  </section>
+
+  <section class="bot" aria-label="Fråga Portunus">
+    <button class="bot-open" id="bot-toggle" type="button" aria-expanded="false" aria-controls="bot-panel">Fråga Portunus – AI-guide</button>
+    <div id="bot-panel" class="bot-panel" hidden>
+      <h2>Hjälp med din första bostad</h2>
+      <p>Fråga om statistiken, nyproduktion eller områdesförslagen. Guiden använder dina nuvarande val i uträknaren. Ändra dem där om du vill söka med en annan kötid eller budget. Varje fråga behandlas separat.</p>
+      <p>Frågan och dina formulärval skickas till Cloudflare och OpenAI när du väljer att fråga. Portunus sparar ingen chatthistorik på servern. Skriv inte personnummer, kontaktuppgifter eller annan privat information. AI-text kan innehålla fel.</p>
+      <form id="bot-form">
+        <label for="bot-question">Din fråga (högst 800 tecken)
+          <textarea id="bot-question" maxlength="800" required placeholder="Vilka områden kan passa mina val, och vad betyder resultatet?"></textarea>
+        </label>
+        <label class="bot-consent"><input type="checkbox" id="bot-consent" required> Jag vill skicka frågan och mina formulärval till AI-tjänsten.</label>
+        <div id="bot-challenge"></div>
+        <button class="knapp" id="bot-send" type="submit" disabled>Fråga Portunus</button>
+      </form>
+      <p id="bot-status" role="status">AI-guiden laddas när du öppnar den.</p>
+      <div id="bot-log" aria-label="Senaste frågan och svaret"></div>
+    </div>
   </section>
 
   <section class="nyproduktion" id="nyproduktion" aria-labelledby="nyproduktion-rubrik">
@@ -388,5 +424,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   raknaUtAlder();
 </script>
 
+<script src="bot-config.js?v=20261019"></script>
+<script src="bot.js?v=20261019"></script>
 </body>
 </html>

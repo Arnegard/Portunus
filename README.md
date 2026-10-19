@@ -13,3 +13,7 @@ QR-koden leder till **https://arnegard.github.io/Portunus/**.
 ## Statistik
 
 Läs om underlaget och hur det uppdateras i [STATISTICS.md](STATISTICS.md).
+
+## AI-guide
+
+Projektbotten kan aktiveras med förbetalda API-krediter och ett permanent tak på 1 000 AI-anrop. Se [AI-GUIDE.md](AI-GUIDE.md) för konton, säker nyckelhantering och driftsättning. Den är avstängd tills backend och den publika backendadressen är konfigurerade.

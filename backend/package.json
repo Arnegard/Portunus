@@ -1,0 +1,12 @@
+{
+  "name": "portunus-ai-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node build-data.mjs && wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node build-data.mjs && wrangler deploy --dry-run --outdir .build",
+    "test": "node build-data.mjs && node --test ../tests/bot-backend.mjs"
+  },
+  "devDependencies": { "wrangler": "4.151.1" }
+}
