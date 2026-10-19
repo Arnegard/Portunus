@@ -4,13 +4,31 @@
   "main": "worker.mjs",
   "compatibility_date": "2026-10-19",
   "workers_dev": true,
-  "build": { "command": "node build-data.mjs" },
-  "observability": { "enabled": false },
-  "vars": {
-    "BOT_ENABLED": "false",
-    "ALLOWED_ORIGIN": "https://arnegard.github.io",
-    "TURNSTILE_SITE_KEY": ""
+  "build": {
+    "command": "node build-data.mjs"
   },
-  "durable_objects": { "bindings": [{ "name": "BOT_GATE", "class_name": "BotGate" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BotGate"] }]
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "BOT_ENABLED": "true",
+    "ALLOWED_ORIGIN": "https://arnegard.github.io",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFbU2O5Kt4DTlwSk"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BOT_GATE",
+        "class_name": "BotGate"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "BotGate"
+      ]
+    }
+  ]
 }
