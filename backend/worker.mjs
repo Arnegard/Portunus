@@ -1,5 +1,6 @@
 import stats from './generated-data.mjs';
 import { validateInput, candidates, modelRequest, safeAnswer, reserve } from './logic.mjs';
+import {validateChatInput,chatRequest,chatResponse} from './chat.mjs';
 const message=(code)=>({closed:'AI-guidens projektgräns är nådd eller guiden är pausad. Uträknaren fungerar fortfarande.',busy:'AI-guiden är upptagen. Vänta en liten stund.',rate:'Du har ställt många frågor. Vänta en stund eller återkom i morgon.'}[code]);
 const json=(body,status=200,headers={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
 async function limitedText(request, max) {
@@ -28,7 +29,7 @@ export default {
     if (!configured(env)) return json({error:'AI-guiden är pausad. Använd uträknaren och områdesförslagen.'},503,headers);
     if (!request.headers.get('Content-Type')?.startsWith('application/json')) return json({error:'Fel format.'},415,headers);
     let input;
-    try { input=validateInput(JSON.parse(await limitedText(request,8192)),stats); } catch(e) { return json({error:e.message},400,headers); }
+    try { const body=JSON.parse(await limitedText(request,8192));input=body.mode==='chat'?validateChatInput(body):validateInput(body,stats); } catch(e) { return json({error:e.message},400,headers); }
     // Cloudflare overwrites this header; never trust an IP supplied in the JSON body.
     const ip=request.headers.get('CF-Connecting-IP');
     if (!ip || ip.length>64) return json({error:'Kunde inte kontrollera begäran.'},403,headers);
@@ -57,9 +58,10 @@ export class BotGate {
       if (!await this.state.storage.getAlarm()) await this.state.storage.setAlarm(Date.now()+3600000);
     } catch { return json({error:'AI-guiden är pausad eftersom användningsgränsen inte kunde kontrolleras.'},503); }
     try {
-      const cards=candidates(input,stats);
+      const chat=input.mode==='chat';
+      const cards=chat?[]:candidates(input,stats);
       // Exactly one paid request per reservation: no automatic retries or tool loops.
-      const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+this.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(modelRequest(input,stats,cards)),signal:AbortSignal.timeout(25000)});
+      const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+this.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(chat?chatRequest(input,stats):modelRequest(input,stats,cards)),signal:AbortSignal.timeout(25000)});
       if (!response.ok) {
         const error=await response.json().catch(()=>({}));
         if (response.status===401 || ['insufficient_quota','credit_balance_exhausted','organization_spend_limit_exceeded','project_spend_limit_exceeded'].includes(error.error?.code)) {
@@ -68,7 +70,7 @@ export class BotGate {
         return json({error:'AI-guiden är tillfälligt pausad eller kunde inte svara. Använd uträknaren.'},503);
       }
       const result=await response.json();
-      return json({answer:safeAnswer(result),cards,year:2025,source:stats.kalla});
+      return json({...chat?chatResponse(result,stats):{answer:safeAnswer(result),cards},year:2025,source:stats.kalla});
     } catch { return json({error:'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.'},503); }
     finally {
       // Reservation is never refunded: a failed/aborted request may still have cost money.
