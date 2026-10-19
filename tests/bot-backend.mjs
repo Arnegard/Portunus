@@ -32,6 +32,46 @@ test('server suggestions use trusted statistics, respect budgets and scope, supp
  assert.deepEqual(candidates(input({budget:1}),stats),[]);
  assert(candidates(input({question:'Vad passar i Bromma?',scope:'alla',budget:20000}),stats).every(c=>c.municipality==='Stockholm'&&c.area!=='Farsta'));
 });
+test('Nacka Strand stays first for age 31, queue 13 and a 12000 budget; alternatives explain trade-offs',()=>{
+ const p=input({age:31,queue:13,budget:12000,municipality:'Nacka',area:'Nacka Strand'});
+ const cards=candidates(p,stats);
+ assert.deepEqual(cards.map(x=>x.area),['Nacka Strand','Orminge','Fisksätra']);
+ assert.equal(cards[0].reason,'Ditt val');assert.equal(cards[0].rent,10942);assert.equal(cards[0].queue,13);
+ assert.equal(cards[0].budgetMargin,1058);assert.equal(cards[0].queueMargin,0);
+ assert.equal(cards[1].comparison.rentSaving,2964);assert.equal(cards[1].comparison.queueSaving,9);
+ assert.equal(new Set(cards.map(x=>x.municipality+x.area)).size,cards.length);
+ const {context}=JSON.parse(modelRequest(p,stats,cards).input[0].content);
+ assert.equal(context.selectedAssessment[0].remaining,0);assert.equal(context.selectedAssessment[0].budgetMargin,1058);
+ assert.equal(context.selectedAssessment[1].queue,null); // Missing new-build evidence is not zero queue.
+ assert(context.overview.withinBudgetAndQueue>cards.length);
+});
+test('selected area is not described as affordable or queue-ready when the criteria fail',()=>{
+ const p=input({age:31,queue:5,budget:10000,municipality:'Nacka',area:'Nacka Strand'});
+ assert(!candidates(p,stats).some(x=>x.area==='Nacka Strand'));
+ const {context}=JSON.parse(modelRequest(p,stats,candidates(p,stats)).input[0].content);
+ assert.equal(context.selectedAssessment[0].budgetMargin,-942);assert.equal(context.selectedAssessment[0].queueMargin,-8);
+ const future=input({...p,budget:12000});
+ assert.equal(candidates(future,stats)[0].remaining,8);
+ const empty=input({...p,area:'Alphyddan'});
+ assert(!candidates(empty,stats).some(x=>x.area==='Alphyddan'));
+ const assessment=JSON.parse(modelRequest(empty,stats,candidates(empty,stats)).input[0].content).context.selectedAssessment;
+ assert(assessment.every(x=>x.budgetMargin===null&&x.queueMargin===null));
+});
+test('named comparison areas are retrieved even if over budget; context stays bounded across all municipalities',()=>{
+ const p=input({question:'Jämför Nacka Strand med Finntorp och Nacka Centrum',age:31,queue:13,budget:8000,municipality:'Nacka',area:'Nacka Strand'});
+ const {context}=JSON.parse(modelRequest(p,stats,candidates(p,stats)).input[0].content);
+ assert(context.areaEvidence.some(x=>x.area==='Finntorp'&&x.statistics.hyra===9157));
+ assert(context.areaEvidence.some(x=>x.area==='Nacka Centrum'&&x.statistics.hyra>p.budget));
+ const named=input({...p,budget:12000});assert(candidates(named,stats).some(x=>x.area==='Finntorp'));
+ const broad=input({scope:'alla',budget:1000000,question:'x'.repeat(800)});
+ const req=modelRequest(broad,stats,candidates(broad,stats));
+ const broadContext=JSON.parse(req.input[0].content).context;
+ assert(broadContext.areaEvidence.length<=12);assert.equal(broadContext.overview.evidenceIsSubset,true);
+ assert(JSON.stringify(req).length<16000);
+ const bromma=input({scope:'alla',question:'Vilka områden i Bromma passar?',municipality:'Nacka',area:'Nacka Strand',budget:12000});
+ const brommaContext=JSON.parse(modelRequest(bromma,stats,candidates(bromma,stats)).input[0].content).context;
+ assert.equal(brommaContext.selectedInScope,false);assert(brommaContext.areaEvidence.every(x=>x.municipality==='Stockholm'));
+});
 test('one bounded request: no tools, no saved conversation; unsafe numeric AI answers fall back',()=>{
  const p=input();const request=modelRequest(p,stats,candidates(p,stats));
  assert.equal(request.max_output_tokens,400);assert.equal(request.store,false);assert.equal(request.model,'gpt-4.1-mini-2025-04-14');assert(!request.tools);assert.equal(request.input.length,1);
