@@ -65,7 +65,7 @@ Använd den riktiga HTTPS-adressen utan extra sökväg. Detta är en publik adre
 1. Öppna hemsidan. Du behöver inte fylla i uträknaren för att chatta.
 2. Klicka **Fråga Portunus – AI-guide** längst ned till höger.
 3. Läs informationen, godkänn att frågan och de senaste chattmeddelandena skickas och slutför robotkontrollen.
-4. Skriv exempelvis ”Jag vill bo i Bromma, har stått i kön i 7 år och kan betala högst 8 000 kr i månaden. Vilka områden kan passa?”. Följ upp med ”Och om jag höjer maxhyran till 9 000?”. Kontrollera att rutan **Din sökning** speglar dina önskemål. Välj **Ny chatt** för att börja om.
+4. Skriv exempelvis ”Jag vill bo i Bromma, har stått i kön i 7 år och kan betala högst 8 000 kr i månaden. Vilka områden kan passa?”. Följ upp med ”Och om jag höjer maxhyran till 9 000?”. Svaret visas direkt som en vanlig chatt. Detaljkort och söksammanställningar visas inte. Välj **Ny chatt** för att börja om.
 5. Kontrollera API-förbrukningen i OpenAI och att automatisk påfyllning fortfarande är avstängd.
 
 Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstesterna använder simulerade svar; de visar inte kvaliteten på riktiga modelltexter.
@@ -83,13 +83,17 @@ Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstestern
 
 ## Statistik, svar och integritet
 
-Backend bygger en egen kontrollerad kopia av `statistics-2025.js` vid deploy. Uppdateras statistiken måste backend också driftsättas på nytt. Koden skickar inte klientens påstådda hyror eller färdiga förslag till AI:n. Belopp, kötider och underlag i korten kommer från backendens egna data. AI:n förklarar med kort text utan siffror; numeriska eller felaktigt formaterade textsvar ersätts av en neutral förklaring. Det eliminerar inte alla möjliga fel i AI-texten.
+Backend bygger en kontrollerad kopia av `statistics-2025.js` vid deploy. Uppdateras statistiken måste backend också driftsättas på nytt. Modellen tolkar önskemål och skriver en kort svarsmall i samma API-anrop, normalt högst två meningar och femtio ord. Kommuner, områdes-id:n, budget och egen kötid valideras på servern. Saknade önskemål gissas inte.
 
-Chatten tolkar plats, egen kötid, eventuell maxhyra och önskad bostadstyp ur meddelandena. Modellen returnerar ett strukturerat sökobjekt och en kort förklaring i samma API-anrop. Servern validerar kommuner, områdes-id:n, belopp och kötid och räknar själv fram korten från statistiken. En modell kan fortfarande misstolka en önskan; **Din sökning** gör tolkningen synlig, och användaren kan rätta den i en följdfråga. Budget och kötid gissas inte när de saknas. Vid känd kötid kan en jämförelse göras utan budget, men ingen hyresnivå påstås då vara prisvärd för just användaren.
+Kötid och hyra står direkt i svarstexten. Modellen använder faktareferenser, exempelvis `{{188:existing:queue}}`; servern fyller i värdet från den egna statistiken. Saknade värden, okända referenser, råa siffervärden som modellen själv skrivit och felaktiga svar stoppas. `remaining` räknas på servern som skillnaden mot egen kötid. Detta minskar risken för påhittade siffror, men eliminerar inte alla språk- och tolkningsfel eller felaktiga slutsatser.
 
-Namngivna jämförelseområden behålls som referens när de har underlag inom budget. Exempelvis får Nacka Strand inte falla bort enbart för att Orminge är billigare. Korten visar bland annat budgetmarginal och skillnaden mellan egen kötid och historiskt snitt. Återstående år är en aritmetisk skillnad mot historiska snitt, inte en prognos för inflyttning. Snitt som redan nås betyder inte att en viss bostad är tillgänglig. Saknad statistik om nyproduktion betyder inte att nybyggda bostäder eller lediga annonser saknas. Det visas högst tre områden, inte en fullständig lista över alla bostadstyper eller alternativ.
+En allmän fråga som ”Hur lång är kötiden på Östermalm?” ska få områdets historiska snitt utan krav på egen kötid, ålder eller maxhyra. Personliga förslag kan göras med egen kötid även om budget saknas: svaret kan då ange vad den historiska snitthyran var och låta användaren ta ställning till den. Okänd budget betyder aldrig att hyran automatiskt är överkomlig för användaren.
 
-**Bromma** avgränsas på servern till de fjorton Brommaområden som finns i katalogen. **Innerstan/innanför tullarna** använder en uttrycklig appavgränsning: Djurgården, Fredhäll, Gamla Stan, Kristineberg, Kungsholmen, Ladugårdsgärdet, Marieberg, Norrmalm, Stadshagen, Södermalm, Vasastaden och Östermalm. Avgränsningen visas i svaret. Den är inte hela Stockholms kommun eller en likställning mellan administrativa stadsdelsområden och tullgränsen. Se också [Visit Stockholms centrala stadsdelar](https://www.visitstockholm.se/stadsdelar-i-stockholm/). Platser som inte kan tolkas till katalogen behöver förtydligas.
+Chatten visar bara frågan och det korta svaret. Inga automatiska resultatkort eller återkommande sammanställningar läggs under varje meddelande. En gemensam synlig notis anger att statistiken gäller ettor och tvåor under 2025 och inte garanterar en bostad. Formuläret ligger under meddelandena, och samtalet rullar till det senaste svaret.
+
+**Bromma** omfattar de fjorton Brommaområden vi har statistik för. **Innerstan/innanför tullarna** använder appens uttryckliga grupp: Djurgården, Fredhäll, Gamla Stan, Kristineberg, Kungsholmen, Ladugårdsgärdet, Marieberg, Norrmalm, Stadshagen, Södermalm, Vasastaden och Östermalm. Det är inte hela Stockholms kommun. Se [Visit Stockholms centrala stadsdelar](https://www.visitstockholm.se/stadsdelar-i-stockholm/).
+
+För ”nära innerstan” får Huvudsta i Solna användas som ett närliggande exempel om kötid och eventuell budget passar underlaget. [Solnas planbeskrivning](https://www.solna.se/bygga-bo--miljo/stadsutveckling/detaljplaner/pagaende-detaljplaner/del-av-huvudsta-417) placerar området vid Karlbergskanalen och kopplingen till Kungsholmen. Det är utanför tullarna och inget bevis för att området är det absolut närmaste alternativet. Vi har ingen avstånds- eller restidsranking och ger inga exakta sådana påståenden.
 
 Historiken finns endast i sidans arbetsminne, försvinner vid omladdning eller **Ny chatt**, och de senaste meddelandena skickas med varje ny fråga. Bekräftade sökparametrar följer med i den korta historiken för att hjälpa modellen behålla exempelvis kommun och kötid när bara hyran ändras. Det är ett kort samtalsminne, inte ett permanent eller obegränsat minne. Uträknaren och chatten ändrar inte varandras värden. Inga lediga annonser eller aktuella hyror hämtas.
 
@@ -122,10 +126,10 @@ Backendtesterna verifierar bland annat att reservation nummer 1 001 nekas, att s
 
 Manuell kvalitetskontroll efter deploy (riktiga anrop förbrukar projektets kvot):
 
-- ”Jag vill bo i Bromma, har stått i kön i 7 år och kan betala högst 8 000 kr/mån.” Sökningen ska avgränsas till Bromma och kortens hyror till budgeten. I nuvarande data nås inget jämförbart snitt inom dessa önskemål av den egna kötiden; Beckomberga har exempelvis ett års skillnad mot snittet. Texten får inte lova en bostad nu.
-- ”Och om jag höjer maxhyran till 9 000?” ska behålla Bromma och egen kötid och ändra enbart hyran.
-- Ny chatt: ”Jag vill bo i innerstan innanför tullarna och har stått i kön i 18 år. När skulle jag kunna få något?” ska ge köjämförelse utan att hitta på en budget, ett datum eller en inflyttningsålder. Avgränsningen ska visas.
-- Ny chatt: ”Jag vill jämföra Nacka Strand med andra områden i Nacka. Jag har 13 år i kön och maxhyra 12 000.” ska behålla Nacka Strand som referens, med 1 058 kr/mån i budgetmarginal, och kunna jämföra billigare alternativ.
-- Testa följdfrågor om befintliga bostäder, nyproduktion, billigare alternativ och okända områdesnamn. Kontrollera framför allt rutan **Din sökning**, resonemanget och att inga möjligheter eller aktuella annonser hittas på.
+- ”Hur länge måste jag ha stått i kön för att kunna få en hyresrätt på Östermalm?” ska få ett kort svar med historiskt snitt direkt i texten, utan krav på att först fylla i personliga uppgifter. Svaret får inte kalla snittet ett säkert minimikrav.
+- ”Jag har stått i kön i 10 år och vill bo så nära innerstan som möjligt. Kan du rekommendera något?” kan exempelvis nämna Huvudsta med dess kontrollerade historiska snitt och hyra, utan att lova bostad eller påstå en exakt närhetsranking.
+- ”Bromma, 7 år i kön och maxhyra 8 000 kr/mån” följt av ”Och om jag höjer maxhyran till 9 000?” ska behålla plats och egen kötid och ändra hyran. Skilj historiska snitt som nås från längre snitt.
+- ”Vad gäller för nyproduktion där?” ska behålla platsen och skilja saknad statistik från att bostäder saknas.
+- Ny chatt ska tömma historiken. Prova också okända områdesnamn, budgetändringar och följdfrågor på mobil.
 
-De automatiska testerna verifierar sökvalidering, geografifilter, beräkningar, historikgränser, uträknarens oberoende och att ett simulerat modellsvar ger högst ett anrop per reservation. De testar inte den riktiga modellens språktolkning eller ordval; därför behövs exemplen ovan efter publicering.
+De automatiska testerna verifierar bland annat numeriska faktareferenser, budget-/kövalidering, geografifilter, historikgränser, chattens oberoende av uträknaren och ett anrop per reservation. Modelltexter i testerna är simulerade. Verklig språktolkning, svarskvalitet och visuell mobilkontroll behöver därför provas efter publicering.
