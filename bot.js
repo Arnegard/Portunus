@@ -7,7 +7,7 @@
   var log = document.getElementById('bot-log');
   var send = document.getElementById('bot-send');
   var reset = document.getElementById('bot-reset');
-  var history = [], turns = [], currentTurn = null;
+  var history = [], turns = [], currentTurn = null, lastError = '';
   var token = '', widget = null, endpoint = '', loading = false, initPromise = null;
   var session = crypto.randomUUID();
   try { session = sessionStorage.getItem('portunus-bot-session') || session; sessionStorage.setItem('portunus-bot-session', session); } catch (_) {}
@@ -33,9 +33,9 @@
       });
       widget = window.turnstile.render('#bot-challenge', {
         sitekey: config.siteKey, action: 'portunus-chat',
-        callback: function (value) { token = value; send.disabled = loading; status.textContent = 'Du kan nu ställa din fråga.'; },
-        'expired-callback': function () { token = ''; send.disabled = true; status.textContent = 'Gör om robotkontrollen för att fråga igen.'; },
-        'error-callback': function () { token = ''; send.disabled = true; status.textContent = 'Robotkontrollen kunde inte slutföras. Försök igen senare.'; }
+        callback: function (value) { token = value; send.disabled = loading; if (!loading && !lastError) status.textContent = 'Du kan nu ställa din fråga.'; },
+        'expired-callback': function () { token = ''; send.disabled = true; if (!loading && !lastError) status.textContent = 'Gör om robotkontrollen för att fråga igen.'; },
+        'error-callback': function () { token = ''; send.disabled = true; if (!loading && !lastError) status.textContent = 'Robotkontrollen kunde inte slutföras. Försök igen senare.'; }
       });
       status.textContent = 'Slutför robotkontrollen för att ställa en fråga.';
     } catch (_) {
@@ -49,7 +49,7 @@
   });
   reset.addEventListener('click', function () {
     if (loading) return;
-    history = []; turns = []; currentTurn = null; log.replaceChildren();
+    history = []; turns = []; currentTurn = null; lastError = ''; log.replaceChildren();
     document.getElementById('bot-question').value = '';
     status.textContent = 'Ny chatt. Beskriv var du vill bo, din kötid och eventuell maxhyra.';
   });
@@ -63,7 +63,7 @@
     while (recent.length && new TextEncoder().encode(JSON.stringify(recent)).length > 4000) recent.shift();
     var body = { mode: 'chat', question: question, session: session, token: token, history: recent, consent: document.getElementById('bot-consent').checked };
     while (body.history.length && new TextEncoder().encode(JSON.stringify(body)).length > 8000) body.history.shift();
-    loading = true; send.disabled = true; reset.disabled = true; panel.setAttribute('aria-busy', 'true'); status.textContent = 'Portunus arbetar med ditt svar…';
+    loading = true; lastError = ''; send.disabled = true; reset.disabled = true; panel.setAttribute('aria-busy', 'true'); status.textContent = 'Portunus arbetar med ditt svar…';
     currentTurn = document.createElement('div'); currentTurn.className = 'bot-turn';
     log.append(currentTurn); turns.push(currentTurn);
     if (turns.length > 3) turns.shift().remove();
@@ -73,7 +73,7 @@
       var response = await fetch(endpoint + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'omit', body: JSON.stringify(body), signal: AbortSignal.timeout(40000) });
       var result = await response.json();
       if (!response.ok) throw Error(result.error || 'AI-guiden kunde inte svara. Försök igen senare.');
-      if (typeof result.answer !== 'string' || !Array.isArray(result.cards)) throw Error('Svaret kunde inte visas.');
+      if (typeof result.answer !== 'string' || !result.answer.trim() || !Array.isArray(result.cards)) throw Error('Svaret kunde inte visas.');
       entry('Portunus', result.answer);
       history.push({ role: 'user', content: question }, { role: 'assistant', content: ((result.search ? 'Bekräftade sökval: ' + JSON.stringify(result.search) + '\n' : '') + result.answer).slice(0, 1600) });
       history = history.slice(-4);
@@ -81,7 +81,10 @@
       log.scrollTop = log.scrollHeight;
       status.textContent = '';
     } catch (error) {
-      status.textContent = error.name === 'TimeoutError' ? 'Svaret tog för lång tid. Inget nytt försök skickas automatiskt.' : error.message;
+      lastError = error.name === 'TimeoutError' ? 'Svaret tog för lång tid. Inget nytt försök skickas automatiskt.' : error.message;
+      status.textContent = lastError;
+      entry('Portunus', lastError);
+      log.scrollTop = log.scrollHeight;
     } finally {
       loading = false; token = ''; send.disabled = true; reset.disabled = false; panel.setAttribute('aria-busy', 'false');
       if (widget !== null && window.turnstile) window.turnstile.reset(widget);
