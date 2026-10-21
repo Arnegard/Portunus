@@ -228,3 +228,20 @@ test('successful provider response returns trusted cards and one counted request
   assert.equal(response.status,200);assert.equal(data.answer,'Jämför underlagen i korten.');assert.deepEqual(data.cards,candidates(p,stats));assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);assert.equal((await storage.get('global')).leases.length,0);
  } finally {globalThis.fetch=old;}
 });
+
+test('invalid model prose uses trusted Nacka statistics without another paid call',async()=>{
+ const old=globalThis.fetch,storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
+ try {
+  globalThis.fetch=async()=>{calls++;return Response.json(provider({search:search({region:'all',municipalities:['Nacka'],queue:7,budget:null}),answer:'Hyran är 1 kr.'}));};
+  const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free({question:'Max 7 år nära Nacka?'}),ipHash:'ip',sessionHash:'session'})}));
+  assert.equal(response.status,200);const result=await response.json();assert.equal(result.answerSource,'statistics');assert.match(result.answer,/Orminge/);assert.match(result.answer,/7\s978 kr\/mån/);assert(!result.answer.includes('Hyran är 1 kr'));assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+ } finally {globalThis.fetch=old;}
+});
+test('incomplete model response produces an explicit error with one reservation',async()=>{
+ const old=globalThis.fetch,storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
+ try {
+  globalThis.fetch=async()=>{calls++;return Response.json({status:'incomplete'});};
+  const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free(),ipHash:'ip',sessionHash:'session'})}));
+  assert.equal(response.status,502);assert.equal((await response.json()).code,'invalid_model_response');assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+ } finally {globalThis.fetch=old;}
+});

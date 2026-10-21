@@ -96,7 +96,35 @@ export function chatResponse(response,stats) {
   const text=(response.output||[]).filter(x=>x.type==='message').flatMap(x=>x.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('');
   const parsed=JSON.parse(text);
   const search=validateSearch(parsed.search,stats);
-  return {answer:renderAnswer(parsed.answer,search,stats),...searchResults(search,stats),search};
+  const results=searchResults(search,stats);
+  let answer,answerSource='model';
+  try { answer=renderAnswer(parsed.answer,search,stats); }
+  catch {
+    // A valid search can still be answered from our own data when the model's
+    // prose fails numerical validation. Never display the rejected prose or retry the API.
+    answer=statisticsAnswer(search,results,stats);answerSource='statistics';
+  }
+  return {answer,...results,search,answerSource};
+}
+function statisticsAnswer(search,results,stats) {
+  const list=catalog(stats);
+  const reference=list[search.referenceAreaId] || (search.areaIds.length===1?list[search.areaIds[0]]:null);
+  const scoped=search.region==='bromma'||search.region==='innerstan'||search.municipalities.length>0||search.areaIds.length>0;
+  if (search.queue!==null && scoped && results.cards.length) {
+    const matching=results.cards.filter(x=>x.remaining===0);
+    const rows=(matching.length?matching:results.cards).slice(0,matching.length?2:1);
+    return 'Historiska snitt: '+rows.map(x=>x.area+' ('+x.municipality+', '+(x.type==='Nyproduktion'?'nyproduktion':'befintliga')+') – '+number(x.queue)+' års kötid och '+number(x.rent)+' kr/mån').join('; ')+'.'+(rows.some(x=>x.smallSample)?' Litet underlag.':'')+(matching.length?' Det är ingen bostadsgaranti.':' Kösnittet är längre än den angivna kötiden.');
+  }
+  if (reference) {
+    const d=reference.data,isNew=search.housing==='new';
+    const queue=isNew?d.ny:d.vanlig,count=isNew?d.antalNy:d.antal;
+    const rent=isNew?d.hyraNy:d.hyra,rentCount=isNew?d.antalHyraNy:d.antalHyra;
+    if(Number.isFinite(queue)&&count>0) return 'För '+(isNew?'nyproduktion':'befintliga bostäder')+' i '+reference.area+' var kösnittet '+number(queue)+' år'+(Number.isFinite(rent)&&rent>0&&rentCount>0?' och snitthyran '+number(rent)+' kr/mån':'')+'. Det är historiska snitt, ingen fast gräns.';
+    return 'Jag saknar jämförbart underlag för '+(isNew?'nyproduktion':'befintliga bostäder')+' i '+reference.area+'. Det betyder inte att bostäder saknas.';
+  }
+  if(search.queue===null) return 'Vilken kötid vill du att jag jämför områdena med?';
+  if(!scoped) return 'Vilken kommun eller vilket område vill du att jag jämför?';
+  return 'Jag hittar inget jämförbart underlag inom de här önskemålen. Vill du ändra kommun eller maxhyra?';
 }
 export function renderAnswer(template,search,stats) {
   if (typeof template!=='string'||!template.trim()||template.length>1600||/https?:|www\.|[<>]/u.test(template)) throw Error('Ogiltigt svar.');

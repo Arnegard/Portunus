@@ -70,8 +70,12 @@ export class BotGate {
         return json({error:'AI-guiden är tillfälligt pausad eller kunde inte svara. Använd uträknaren.'},503);
       }
       const result=await response.json();
-      return json({...chat?chatResponse(result,stats):{answer:safeAnswer(result),cards},year:2025,source:stats.kalla});
-    } catch { return json({error:'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.'},503); }
+      if (chat) {
+        try { return json({...chatResponse(result,stats),year:2025,source:stats.kalla}); }
+        catch { return json({error:'AI-svaret gick inte att kontrollera. Försök med en kortare eller annorlunda formulerad fråga.',code:'invalid_model_response'},502); }
+      }
+      return json({answer:safeAnswer(result),cards,year:2025,source:stats.kalla});
+    } catch(error) { return json({error:error?.name==='TimeoutError'?'AI-tjänsten svarade inte i tid. Försök igen senare.':'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.'},503); }
     finally {
       // Reservation is never refunded: a failed/aborted request may still have cost money.
       try { await this.state.storage.transaction(async tx=>{const g=await tx.get('global');await tx.put('global',{...g,leases:g.leases.filter(x=>x.id!==reservation.id)});}); } catch { /* Lease expires; no new usage allowed if storage is unavailable. */ }

@@ -133,3 +133,5 @@ Manuell kvalitetskontroll efter deploy (riktiga anrop förbrukar projektets kvot
 - Ny chatt ska tömma historiken. Prova också okända områdesnamn, budgetändringar och följdfrågor på mobil.
 
 De automatiska testerna verifierar bland annat numeriska faktareferenser, budget-/kövalidering, geografifilter, historikgränser, chattens oberoende av uträknaren och ett anrop per reservation. Modelltexter i testerna är simulerade. Verklig språktolkning, svarskvalitet och visuell mobilkontroll behöver därför provas efter publicering.
+
+Chattfel visas som en egen bubbla och ligger kvar när robotkontrollen blir klar igen. Ingen automatisk omförsökning görs. Om modellens sökvillkor är giltiga men svarstextens faktareferenser inte kan kontrolleras, skapas ett kort reservsvar från vår egen statistik utan ytterligare AI-anrop. Ofullständiga eller ogiltiga sökvillkor ger ett tydligt felmeddelande.
