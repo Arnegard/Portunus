@@ -5,7 +5,7 @@ if (!globalThis.crypto) globalThis.crypto=webcrypto;
 import stats from '../backend/generated-data.mjs';
 import worker, { BotGate } from '../backend/worker.mjs';
 import { reserve, validateInput, candidates, modelRequest, safeAnswer, TOTAL_LIMIT } from '../backend/logic.mjs';
-import {validateChatInput,chatRequest,chatResponse,renderAnswer,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
+import {validateChatInput,chatRequest,chatResponse,recoverChat,renderAnswer,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
 const input=(patch={})=>({question:'Vilka områden passar?',session:crypto.randomUUID(),token:'valid-proof',consent:true,age:25,queue:7,budget:8000,municipality:'Stockholm',area:'Farsta',scope:'kommun',...patch});
 class Storage {
   data=new Map(); tail=Promise.resolve(); alarm=null;
@@ -237,11 +237,42 @@ test('invalid model prose uses trusted Nacka statistics without another paid cal
   assert.equal(response.status,200);const result=await response.json();assert.equal(result.answerSource,'statistics');assert.match(result.answer,/Orminge/);assert.match(result.answer,/7\s978 kr\/mån/);assert(!result.answer.includes('Hyran är 1 kr'));assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
  } finally {globalThis.fetch=old;}
 });
-test('incomplete model response produces an explicit error with one reservation',async()=>{
+test('incomplete model response asks a follow-up without another reservation',async()=>{
  const old=globalThis.fetch,storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
  try {
   globalThis.fetch=async()=>{calls++;return Response.json({status:'incomplete'});};
   const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free(),ipHash:'ip',sessionHash:'session'})}));
-  assert.equal(response.status,502);assert.equal((await response.json()).code,'invalid_model_response');assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+  assert.equal(response.status,200);const data=await response.json();assert.equal(data.recoveryReason,'incomplete_model_response');assert.equal(data.answerSource,'clarification');assert.deepEqual(data.cards,[]);assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
  } finally {globalThis.fetch=old;}
+});
+
+test('the actual age 22, four queue years, 8000 rent question survives incomplete and malformed output',async()=>{
+ const old=globalThis.fetch;
+ const question='Jag är 22 år och stått i kön i 4år. Jag kan betala en maxhyra på 8000kr. Vart kan jag bo?';
+ const cases=[
+  [()=>Response.json({status:'incomplete'}),'incomplete_model_response']
+ ];
+ cases.push([()=>new Response('{broken'),'invalid_model_json']);
+ cases.push([()=>Response.json(provider({search:{queue:22,budget:8000,municipalities:['invented']},answer:'Bo på ett påhittat ställe.'})),'invalid_model_search']);
+ try {
+  for(const [responseFactory,reason] of cases){
+   const storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
+   globalThis.fetch=async()=>{calls++;return responseFactory();};
+   const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free({question}),ipHash:'ip',sessionHash:'session'})}));
+   assert.equal(response.status,200);const data=await response.json();
+   assert.equal(data.answer,'Vilken kommun eller vilket område vill du bo i?');assert.equal(data.recoveryReason,reason);assert.deepEqual(data.cards,[]);assert(!data.search);assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);assert.equal((await storage.get('global')).leases.length,0);
+  }
+ } finally {globalThis.fetch=old;}
+});
+test('recovery never invents criteria, uses user geography only, and unreadable prose falls back',()=>{
+ const question='Jag har fyra år i kön och max åtta tusen i hyra.';
+ const fromAssistant=recoverChat(free({question,history:[{role:'assistant',content:'Huvudsta i Solna'}]}),stats,'bad');
+ assert.equal(fromAssistant.answer,'Vilken kommun eller vilket område vill du bo i?');assert.equal(fromAssistant.recoveryReason,'invalid_model_response');
+ const fromUser=recoverChat(free({question,history:[{role:'user',content:'Jag vill bo i Nacka.'}]}),stats,'invalid_model_json');
+ assert.match(fromUser.answer,/inte färdigställa/);assert(!fromUser.answer.includes('Vilken kommun'));
+ for(const answer of ['Med din kötid p□{{ownQueue}} □□□','Добро пожаловать','Hej\uFFFD']){
+  const result=chatResponse(provider({search:search({region:'all',municipalities:['Nacka'],queue:4,budget:8000}),answer}),stats);
+  assert.equal(result.answerSource,'statistics');assert.match(result.answer,/Orminge/);assert(!result.answer.includes('□'));
+ }
+ assert.equal(renderAnswer('Å, ä och ö fungerar – liksom vanliga skiljetecken.',search(),stats),'Å, ä och ö fungerar – liksom vanliga skiljetecken.');
 });
