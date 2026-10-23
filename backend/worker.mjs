@@ -1,6 +1,6 @@
 import stats from './generated-data.mjs';
 import { validateInput, candidates, modelRequest, safeAnswer, reserve } from './logic.mjs';
-import {validateChatInput,chatRequest,chatResponse} from './chat.mjs';
+import {validateChatInput,chatRequest,chatResponse,recoverChat} from './chat.mjs';
 const message=(code)=>({closed:'AI-guidens projektgräns är nådd eller guiden är pausad. Uträknaren fungerar fortfarande.',busy:'AI-guiden är upptagen. Vänta en liten stund.',rate:'Du har ställt många frågor. Vänta en stund eller återkom i morgon.'}[code]);
 const json=(body,status=200,headers={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
 async function limitedText(request, max) {
@@ -69,11 +69,14 @@ export class BotGate {
         }
         return json({error:'AI-guiden är tillfälligt pausad eller kunde inte svara. Använd uträknaren.'},503);
       }
-      const result=await response.json();
       if (chat) {
-        try { return json({...chatResponse(result,stats),year:2025,source:stats.kalla}); }
-        catch { return json({error:'AI-svaret gick inte att kontrollera. Försök med en kortare eller annorlunda formulerad fråga.',code:'invalid_model_response'},502); }
+        try {
+          let result;
+          try { result=await response.json(); } catch { throw Object.assign(Error('Ogiltigt svarsformat.'),{code:'invalid_model_json'}); }
+          return json({...chatResponse(result,stats),year:2025,source:stats.kalla});
+        } catch(error) { return json({...recoverChat(input,stats,error.code),year:2025,source:stats.kalla}); }
       }
+      const result=await response.json();
       return json({answer:safeAnswer(result),cards,year:2025,source:stats.kalla});
     } catch(error) { return json({error:error?.name==='TimeoutError'?'AI-tjänsten svarade inte i tid. Försök igen senare.':'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.'},503); }
     finally {
