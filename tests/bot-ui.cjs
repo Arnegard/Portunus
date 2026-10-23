@@ -49,3 +49,15 @@ test('ordinary chat displays the answer directly without cards or extra summarie
  assert(!turn.children.some(x=>x.className==='bot-card'||x.className==='bot-evidence'));
  assert.equal(x.els['bot-log'].scrollTop,x.els['bot-log'].scrollHeight);
 });
+
+test('a recovery question preserves the original age, queue and budget for the next turn',async()=>{
+ const x=setup('https://bot.example/');x.els['bot-toggle'].handlers.click();await settle();
+ const original='Jag är 22 år och stått i kön i 4år. Jag kan betala en maxhyra på 8000kr. Vart kan jag bo?';
+ x.els['bot-question'].value=original;
+ const sent=[];x.ctx.fetch=async(url,opts)=>{sent.push(JSON.parse(opts.body));return {ok:true,json:async()=>({answer:'Vilken kommun eller vilket område vill du bo i?',cards:[],answerSource:'clarification',recoveryReason:'incomplete_model_response'})};};
+ await x.els['bot-form'].handlers.submit({preventDefault(){}});
+ assert.equal(x.els['bot-log'].children.at(-1).children.at(-1).children[1].textContent,'Vilken kommun eller vilket område vill du bo i?');
+ x.prove();x.els['bot-question'].value='Nacka';
+ await x.els['bot-form'].handlers.submit({preventDefault(){}});
+ assert.equal(sent.length,2);assert.equal(sent[1].history[0].content,original);assert.equal(sent[1].history[1].content,'Vilken kommun eller vilket område vill du bo i?');
+});
