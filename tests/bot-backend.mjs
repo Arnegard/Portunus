@@ -5,7 +5,7 @@ if (!globalThis.crypto) globalThis.crypto=webcrypto;
 import stats from '../backend/generated-data.mjs';
 import worker, { BotGate } from '../backend/worker.mjs';
 import { reserve, validateInput, candidates, modelRequest, safeAnswer, TOTAL_LIMIT } from '../backend/logic.mjs';
-import {validateChatInput,chatRequest,chatResponse,recoverChat,renderAnswer,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
+import {validateChatInput,chatRequest,chatResponse,recoverChat,replyLanguage,renderAnswer,validateSearch,searchResults,catalog,BROMMA_AREAS,INNERSTAN_AREAS} from '../backend/chat.mjs';
 const input=(patch={})=>({question:'Vilka områden passar?',session:crypto.randomUUID(),token:'valid-proof',consent:true,age:25,queue:7,budget:8000,municipality:'Stockholm',area:'Farsta',scope:'kommun',...patch});
 class Storage {
   data=new Map(); tail=Promise.resolve(); alarm=null;
@@ -309,7 +309,7 @@ test('budget follow-up retains user geography, latest municipality replaces it, 
 test('nearby landmarks ask for scope rather than substituting Rinkeby or Huvudsta',()=>{
  for(const question of ['Jag vill bo nära Brommaplan eller Orminge centrum, vad passar?', 'Max 7 år och nära Nacka?', 'Near Nacka, max 10000 a month']){
   const result=chatResponse(provider({search:search({region:'all',municipalities:['Stockholm'],queue:8,budget:9000}),answer:'Rinkeby och Huvudsta passar.'}),stats,free({question}));
-  assert.equal(result.answerSource,'clarification');assert.equal(result.cards.length,0);assert.match(result.answer,/avstånd/);assert(!/Rinkeby|Huvudsta/.test(result.answer));
+  assert.equal(result.answerSource,'clarification');assert.equal(result.cards.length,0);assert.match(result.answer,/avstånd|distances/);assert(!/Rinkeby|Huvudsta/.test(result.answer));
  }
 });
 test('general area facts still work and cross-municipality factual prose is rejected',()=>{
@@ -327,4 +327,55 @@ test('Bromma stays a subset of Stockholm, named areas do not widen to their muni
  const area=chatResponse(value,stats,free({question:'Jag vill bo i Nacka Strand'}));
  assert.equal(area.search.areaIds.length,1);assert(area.cards.every(x=>x.area==='Nacka Strand'));
  const mixed=chatResponse(value,stats,free({question:'Nacka eller Huvudsta, vad passar?'}));assert.equal(mixed.answerSource,'clarification');assert.equal(mixed.cards.length,0);
+});
+
+test('reply language follows the current question, explicit preferences and neutral user follow-ups',()=>{
+ assert.equal(replyLanguage(free({question:'Hello, where in Nacka could I live?'})),'en');
+ assert.equal(replyLanguage(free({question:'Var i Nacka kan jag bo?'})),'sv');
+ const history=[{role:'user',content:'Where can I live with four years in the queue?'},{role:'assistant',content:'Vilket område vill du jämföra?'}];
+ assert.equal(replyLanguage(free({question:'Nacka?',history})),'en');
+ assert.equal(replyLanguage(free({question:'Hur lång kötid i Nacka?',history})),'sv');
+ assert.equal(replyLanguage(free({question:'Kan du svara på engelska?'})),'en');
+ assert.equal(replyLanguage(free({question:'Please reply in Swedish.'})),'sv');
+ assert.equal(replyLanguage(free({question:'Nacka',history:[]})),'sv');
+ assert.match(chatRequest(free({question:'Where could I live?'}),stats).instructions,/svara personligt på engelska/);
+});
+test('English and Swedish recommendations share exactly the same trusted rows and currency',()=>{
+ const value=provider({search:search({queue:10,budget:10000,region:'all',municipalities:['Nacka']}),answer:'Felaktig fri text.'});
+ const english=chatResponse(value,stats,free({question:'Where in Nacka could I live?'}));
+ const swedish=chatResponse(value,stats,free({question:'Var i Nacka kan jag bo?'}));
+ assert.equal(english.language,'en');assert.equal(swedish.language,'sv');assert.deepEqual(english.cards,swedish.cards);
+ assert.match(english.answer,/Orminge \(Nacka, existing housing\): 4 years in the queue and SEK 7,978\/month/);
+ assert.match(english.answer,/Historical averages/);assert(!/års|kr\/mån|bostadsgaranti/.test(english.answer));
+ assert.match(swedish.answer,/års kötid/);assert(!swedish.answer.includes('SEK'));
+});
+test('English direct facts and rejected model prose use English verified values and fallback',()=>{
+ const id=catalog(stats).find(x=>x.area==='Östermalm').id;
+ const options=search({queue:null,budget:null,region:'all',areaIds:[id],showResults:false});
+ const user=free({question:'What is the average rent and queue time on Östermalm?'});
+ const direct=chatResponse(provider({search:options,answer:`The average queue time was {{${id}:existing:queue}} years and rent was SEK {{${id}:existing:rent}} per month.`}),stats,user);
+ assert.match(direct.answer,/26 years/);assert.match(direct.answer,/SEK 8,695/);
+ const fallback=chatResponse(provider({search:options,answer:'Hyran är 1 kr.'}),stats,user);
+ assert.equal(fallback.language,'en');assert.equal(fallback.answerSource,'statistics');assert.match(fallback.answer,/existing housing in Östermalm/);assert.match(fallback.answer,/SEK 8,695\/month/);
+ const missing=chatResponse(provider({search:{...options,housing:'new'},answer:`{{${id}:new:queue}} years`}),stats,user);
+ assert.match(missing.answer,/do not have comparable data for new builds/);
+});
+test('English clarification, no-match response, proximity and recovery stay English',()=>{
+ const options=search({region:'unspecified',queue:4,budget:8000});
+ const missing=chatResponse(provider({search:options,answer:'Vilken kommun?'}),stats,free({question:'Where can I live with four years in the queue?'}));
+ assert.equal(missing.answer,'Which municipality or neighbourhood would you like to live in?');
+ const none=chatResponse(provider({search:search(),answer:'Ett område.'}),stats,free({question:'Which areas in Bromma fit my queue time?'}));
+ assert.match(none.answer,/cannot find an area/);
+ const nearby=chatResponse(provider({search:options,answer:'Ett område.'}),stats,free({question:'I want to live near Brommaplan'}));
+ assert.match(nearby.answer,/rank distances/);
+ const fallback=recoverChat(free({question:'Where in Nacka could I live?'}),stats,'incomplete_model_response');
+ assert.equal(fallback.language,'en');assert.match(fallback.answer,/could not complete the comparison/);
+});
+test('English model failure uses the existing single request and returns an English recovery question',async()=>{
+ const old=globalThis.fetch,storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
+ try {
+  globalThis.fetch=async()=>{calls++;return Response.json({status:'incomplete'});};
+  const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free({question:'Where can I live with four years in the queue and rent below 8000?'}),ipHash:'ip',sessionHash:'session'})}));
+  assert.equal(response.status,200);const data=await response.json();assert.equal(data.language,'en');assert.equal(data.answer,'Which municipality or neighbourhood would you like to live in?');assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+ } finally {globalThis.fetch=old;}
 });
