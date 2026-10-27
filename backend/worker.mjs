@@ -73,7 +73,7 @@ export class BotGate {
         try {
           let result;
           try { result=await response.json(); } catch { throw Object.assign(Error('Ogiltigt svarsformat.'),{code:'invalid_model_json'}); }
-          return json({...chatResponse(result,stats),year:2025,source:stats.kalla});
+          return json({...chatResponse(result,stats,input),year:2025,source:stats.kalla});
         } catch(error) { return json({...recoverChat(input,stats,error.code),year:2025,source:stats.kalla}); }
       }
       const result=await response.json();

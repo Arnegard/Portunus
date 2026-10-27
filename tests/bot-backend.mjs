@@ -83,7 +83,7 @@ test('free-chat provider call consumes exactly one existing reservation and retu
  try {
   globalThis.fetch=async(url,opts)=>{calls++;const request=JSON.parse(opts.body);assert.equal(request.max_output_tokens,600);assert.equal(request.store,false);assert(!request.input.some(x=>x.content.includes('valid-proof')));return Response.json(provider({search:search(),answer:'Jämför de historiska snitten i korten.'}));};
   const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free(),ipHash:'ip',sessionHash:'session'})}));
-  assert.equal(response.status,200);const result=await response.json();assert.equal(result.cards[0].area,'Beckomberga');assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+  assert.equal(response.status,200);const result=await response.json();assert.equal(result.cards.length,0);assert.match(result.answer,/inget område/);assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
  } finally {globalThis.fetch=old;}
 });
 
@@ -233,8 +233,8 @@ test('invalid model prose uses trusted Nacka statistics without another paid cal
  const old=globalThis.fetch,storage=new Storage(),gate=new BotGate({storage},{OPENAI_API_KEY:'mock'});let calls=0;
  try {
   globalThis.fetch=async()=>{calls++;return Response.json(provider({search:search({region:'all',municipalities:['Nacka'],queue:7,budget:null}),answer:'Hyran är 1 kr.'}));};
-  const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free({question:'Max 7 år nära Nacka?'}),ipHash:'ip',sessionHash:'session'})}));
-  assert.equal(response.status,200);const result=await response.json();assert.equal(result.answerSource,'statistics');assert.match(result.answer,/Orminge/);assert.match(result.answer,/7\s978 kr\/mån/);assert(!result.answer.includes('Hyran är 1 kr'));assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
+  const response=await gate.fetch(new Request('https://internal/chat',{method:'POST',body:JSON.stringify({input:free({question:'Nacka, 7 år i kön, ingen maxhyra'}),ipHash:'ip',sessionHash:'session'})}));
+  assert.equal(response.status,200);const result=await response.json();assert.equal(result.answerSource,'verified_statistics');assert.match(result.answer,/Orminge/);assert.match(result.answer,/7\s978 kr\/mån/);assert(!result.answer.includes('Hyran är 1 kr'));assert.equal(calls,1);assert.equal((await storage.get('global')).used,1);
  } finally {globalThis.fetch=old;}
 });
 test('incomplete model response asks a follow-up without another reservation',async()=>{
@@ -275,4 +275,56 @@ test('recovery never invents criteria, uses user geography only, and unreadable 
   assert.equal(result.answerSource,'statistics');assert.match(result.answer,/Orminge/);assert(!result.answer.includes('□'));
  }
  assert.equal(renderAnswer('Å, ä och ö fungerar – liksom vanliga skiljetecken.',search(),stats),'Å, ä och ö fungerar – liksom vanliga skiljetecken.');
+});
+
+test('Nacka screenshot: server overrides wrong model geography and explicit amounts, and never prints Mörbylund',()=>{
+ const wrong=catalog(stats).find(x=>x.area==='Mörbylund');
+ const question='Hello i have been in the queue for 10 years and could pay 10000 a month, where in Nacka could i get a aparment?';
+ const value={search:search({region:'all',municipalities:['Danderyd'],areaIds:[wrong.id],referenceAreaId:wrong.id,queue:20,budget:15000}),answer:`I Nacka är Mörbylund {{${wrong.id}:existing:queue}} år och {{${wrong.id}:existing:rent}} kr/mån.`};
+ for(const showResults of [true,false]){
+  const result=chatResponse(provider({...value,search:{...value.search,showResults}}),stats,free({question}));
+  assert.equal(result.answerSource,'verified_statistics');assert.deepEqual(result.search.municipalities,['Nacka']);assert.equal(result.search.queue,10);assert.equal(result.search.budget,10000);
+  assert(result.cards.length);assert(result.cards.every(x=>x.municipality==='Nacka'&&x.queue<=10&&x.rent<=10000));assert.match(result.answer,/Orminge \(Nacka/);assert(!/Mörbylund|Danderyd|Huvudsta/.test(result.answer));
+ }
+});
+test('recommendations do not relax queue, rent, housing or missing-data constraints',()=>{
+ for(const housing of ['all','existing','new'])for(const queue of [0,4,8,10,18])for(const budget of [5000,8000,10000,null]){
+  const result=chatResponse(provider({search:search({queue,budget,housing}),answer:'Huvudsta är nära Nacka.'}),stats,free({question:'Vilka områden i Nacka passar?'}));
+  assert.equal(result.answerSource,'verified_statistics');assert(result.cards.every(x=>x.municipality==='Nacka'&&x.queue<=queue&&(budget===null||x.rent<=budget)&&x.count>0&&x.rentCount>0));
+  if(housing!=='all')assert(result.cards.every(x=>x.type===(housing==='new'?'Nyproduktion':'Befintliga bostäder')));
+  assert(!result.answer.includes('Huvudsta'));
+  if(!result.cards.length)assert.match(result.answer,/inget område/);
+ }
+});
+test('budget follow-up retains user geography, latest municipality replaces it, and assistant names do not anchor scope',()=>{
+ const history=[{role:'user',content:'Jag vill bo i Nacka.'},{role:'assistant',content:'Mörbylund i Danderyd kan passa.'}];
+ const value=provider({search:search({region:'all',municipalities:['Danderyd'],queue:10,budget:10000}),answer:'Ett felaktigt förslag.'});
+ const follow=chatResponse(value,stats,free({history,question:'Och om jag höjer maxhyran?'}));
+ assert.deepEqual(follow.search.municipalities,['Nacka']);assert(follow.cards.every(x=>x.municipality==='Nacka'));
+ const changed=chatResponse(value,stats,free({history,question:'Vilka områden i Solna passar?'}));
+ assert.deepEqual(changed.search.municipalities,['Solna']);assert(changed.cards.every(x=>x.municipality==='Solna'));
+ const reset=chatResponse(value,stats,free({history,question:'Börja om'}));assert.equal(reset.answerSource,'clarification');assert.equal(reset.cards.length,0);
+ const unknown=chatResponse(value,stats,free({history,question:'Jag vill bo i Berlin'}));assert.equal(unknown.answerSource,'clarification');assert.equal(unknown.cards.length,0);
+});
+test('nearby landmarks ask for scope rather than substituting Rinkeby or Huvudsta',()=>{
+ for(const question of ['Jag vill bo nära Brommaplan eller Orminge centrum, vad passar?', 'Max 7 år och nära Nacka?', 'Near Nacka, max 10000 a month']){
+  const result=chatResponse(provider({search:search({region:'all',municipalities:['Stockholm'],queue:8,budget:9000}),answer:'Rinkeby och Huvudsta passar.'}),stats,free({question}));
+  assert.equal(result.answerSource,'clarification');assert.equal(result.cards.length,0);assert.match(result.answer,/avstånd/);assert(!/Rinkeby|Huvudsta/.test(result.answer));
+ }
+});
+test('general area facts still work and cross-municipality factual prose is rejected',()=>{
+ const ostermalm=catalog(stats).find(x=>x.area==='Östermalm'),morby=catalog(stats).find(x=>x.area==='Mörbylund');
+ const general=chatResponse(provider({search:search({queue:null,budget:null,region:'all',areaIds:[ostermalm.id],showResults:false}),answer:`På Östermalm var kösnittet {{${ostermalm.id}:existing:queue}} år.`}),stats,free({question:'Hur lång kötid på Östermalm?'}));
+ assert.match(general.answer,/26 år/);
+ const blocked=chatResponse(provider({search:search({queue:null,region:'all',municipalities:['Nacka'],showResults:false}),answer:`I Nacka ligger Mörbylund med {{${morby.id}:existing:queue}} års kötid.`}),stats,free({question:'Hur lång kötid i Nacka?'}));
+ assert.equal(blocked.answerSource,'statistics');assert(!blocked.answer.includes('Mörbylund'));
+});
+
+test('Bromma stays a subset of Stockholm, named areas do not widen to their municipality, incompatible scopes clarify',()=>{
+ const value=provider({search:search({region:'all',queue:30,budget:20000}),answer:'Felaktig fri text.'});
+ const bromma=chatResponse(value,stats,free({question:'Jag vill bo i Bromma i Stockholm, vilka områden passar?'}));
+ assert.equal(bromma.search.region,'bromma');assert(bromma.cards.every(x=>BROMMA_AREAS.includes(x.area)));
+ const area=chatResponse(value,stats,free({question:'Jag vill bo i Nacka Strand'}));
+ assert.equal(area.search.areaIds.length,1);assert(area.cards.every(x=>x.area==='Nacka Strand'));
+ const mixed=chatResponse(value,stats,free({question:'Nacka eller Huvudsta, vad passar?'}));assert.equal(mixed.answerSource,'clarification');assert.equal(mixed.cards.length,0);
 });
