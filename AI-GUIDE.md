@@ -83,7 +83,7 @@ Detta är första riktiga AI-testet och förbrukar ett anrop. Utvecklingstestern
 
 ## Statistik, svar och integritet
 
-Backend bygger en kontrollerad kopia av `statistics-2025.js` vid deploy. Uppdateras statistiken måste backend också driftsättas på nytt. Modellen tolkar önskemål och skriver en kort svarsmall i samma API-anrop, normalt högst två meningar och femtio ord. Kommuner, områdes-id:n, budget och egen kötid valideras på servern. Saknade önskemål gissas inte.
+Backend bygger en kontrollerad kopia av `statistics-2025.js` vid deploy. Uppdateras statistiken måste backend också driftsättas på nytt. Modellen tolkar önskemål och skriver en kort svarsmall i samma API-anrop. Vid personliga områdesförslag väljer servern själv raderna och skriver de korta faktaraderna; modellens fria rekommendationstext visas inte. Kommun, områdesnamn, bostadstyp, kötid och hyra hämtas tillsammans från samma statistikrad. Bara rader med både kö- och hyresunderlag, historisk kötid högst egen kötid och snitthyra högst eventuell maxhyra visas. Finns ingen match frågar chatten om ändrade önskemål utan att smyga in dyrare eller geografiskt andra områden.
 
 Kötid och hyra står direkt i svarstexten. Modellen använder faktareferenser, exempelvis `{{188:existing:queue}}`; servern fyller i värdet från den egna statistiken. Saknade värden, okända referenser, råa siffervärden som modellen själv skrivit och felaktiga svar stoppas. `remaining` räknas på servern som skillnaden mot egen kötid. Detta minskar risken för påhittade siffror, men eliminerar inte alla språk- och tolkningsfel eller felaktiga slutsatser.
 
@@ -93,7 +93,7 @@ Chatten visar bara frågan och det korta svaret. Inga automatiska resultatkort e
 
 **Bromma** omfattar de fjorton Brommaområden vi har statistik för. **Innerstan/innanför tullarna** använder appens uttryckliga grupp: Djurgården, Fredhäll, Gamla Stan, Kristineberg, Kungsholmen, Ladugårdsgärdet, Marieberg, Norrmalm, Stadshagen, Södermalm, Vasastaden och Östermalm. Det är inte hela Stockholms kommun. Se [Visit Stockholms centrala stadsdelar](https://www.visitstockholm.se/stadsdelar-i-stockholm/).
 
-För ”nära innerstan” får Huvudsta i Solna användas som ett närliggande exempel om kötid och eventuell budget passar underlaget. [Solnas planbeskrivning](https://www.solna.se/bygga-bo--miljo/stadsutveckling/detaljplaner/pagaende-detaljplaner/del-av-huvudsta-417) placerar området vid Karlbergskanalen och kopplingen till Kungsholmen. Det är utanför tullarna och inget bevis för att området är det absolut närmaste alternativet. Vi har ingen avstånds- eller restidsranking och ger inga exakta sådana påståenden.
+Geografiskt urval förankras i exakta katalogetiketter i användarens senaste platsmeddelande, aldrig i AI:ns egna exempel. Senaste uttryckliga kommun/område ersätter tidigare plats; en budgetföljdfråga behåller tidigare användarplats. Kommunnamn inuti ett områdesnamn som Nacka Centrum vidgar inte sökningen till hela kommunen. Bromma och innerstan använder appens uttryckliga grupper. Vissa tydliga svenska och engelska numeriska formuleringar i den aktuella frågan ges företräde framför modellens belopp och kötid; övrig språktolkning är fortfarande modellberoende. Negationer, okända platsbyten och kombinationer som inte säkert kan representeras ger förtydligande. Närhetsfrågor, även Brommaplan och ”nära innerstan”, ber om kommuner/områden att jämföra eftersom vi saknar avstånds- och restidsranking. Det tidigare fasta Huvudsta-exemplet är borttaget.
 
 Historiken finns endast i sidans arbetsminne, försvinner vid omladdning eller **Ny chatt**, och de senaste meddelandena skickas med varje ny fråga. Bekräftade sökparametrar följer med i den korta historiken för att hjälpa modellen behålla exempelvis kommun och kötid när bara hyran ändras. Det är ett kort samtalsminne, inte ett permanent eller obegränsat minne. Uträknaren och chatten ändrar inte varandras värden. Inga lediga annonser eller aktuella hyror hämtas.
 
@@ -127,8 +127,8 @@ Backendtesterna verifierar bland annat att reservation nummer 1 001 nekas, att s
 Manuell kvalitetskontroll efter deploy (riktiga anrop förbrukar projektets kvot):
 
 - ”Hur länge måste jag ha stått i kön för att kunna få en hyresrätt på Östermalm?” ska få ett kort svar med historiskt snitt direkt i texten, utan krav på att först fylla i personliga uppgifter. Svaret får inte kalla snittet ett säkert minimikrav.
-- ”Jag har stått i kön i 10 år och vill bo så nära innerstan som möjligt. Kan du rekommendera något?” kan exempelvis nämna Huvudsta med dess kontrollerade historiska snitt och hyra, utan att lova bostad eller påstå en exakt närhetsranking.
-- ”Bromma, 7 år i kön och maxhyra 8 000 kr/mån” följt av ”Och om jag höjer maxhyran till 9 000?” ska behålla plats och egen kötid och ändra hyran. Skilj historiska snitt som nås från längre snitt.
+- ”Jag har stått i kön i 10 år och vill bo så nära innerstan som möjligt” ska be om en geografisk avgränsning, utan godtyckligt Huvudsta-förslag. ”10 år i kön, maxhyra 10 000 kr, var i Nacka kan jag bo?” ska bara nämna Nackaområden inom båda gränserna, exempelvis Orminge; aldrig Mörbylund i Danderyd.
+- ”Bromma, 7 år i kön och maxhyra 8 000 kr/mån” följt av ”Och om jag höjer maxhyran till 9 000?” ska behålla plats och egen kötid och ändra hyran. Om inget historiskt snitt ryms inom både kötid och budget ska svaret säga det, utan att rekommendera ett längre snitt som match.
 - ”Vad gäller för nyproduktion där?” ska behålla platsen och skilja saknad statistik från att bostäder saknas.
 - Ny chatt ska tömma historiken. Prova också okända områdesnamn, budgetändringar och följdfrågor på mobil.
 
