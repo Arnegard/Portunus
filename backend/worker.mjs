@@ -1,7 +1,7 @@
 import stats from './generated-data.mjs';
 import { validateInput, candidates, modelRequest, safeAnswer, reserve } from './logic.mjs';
-import {validateChatInput,chatRequest,chatResponse,recoverChat} from './chat.mjs';
-const message=(code)=>({closed:'AI-guidens projektgräns är nådd eller guiden är pausad. Uträknaren fungerar fortfarande.',busy:'AI-guiden är upptagen. Vänta en liten stund.',rate:'Du har ställt många frågor. Vänta en stund eller återkom i morgon.'}[code]);
+import {validateChatInput,chatRequest,chatResponse,recoverChat,replyLanguage} from './chat.mjs';
+const message=(code,english=false)=>english?({closed:'The AI guide has reached its project limit or is paused. The calculator is still available.',busy:'The AI guide is busy. Please wait a moment.',rate:'You have asked many questions. Please wait or come back tomorrow.'}[code]):({closed:'AI-guidens projektgräns är nådd eller guiden är pausad. Uträknaren fungerar fortfarande.',busy:'AI-guiden är upptagen. Vänta en liten stund.',rate:'Du har ställt många frågor. Vänta en stund eller återkom i morgon.'}[code]);
 const json=(body,status=200,headers={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
 async function limitedText(request, max) {
   const reader=request.body?.getReader(); if (!reader) throw Error('Tom fråga.');
@@ -51,12 +51,13 @@ export class BotGate {
   constructor(state,env) { this.state=state; this.env=env; }
   async fetch(request) {
     const {input,ipHash,sessionHash}=await request.json();
+    const english=input.mode==='chat'&&replyLanguage(input)==='en';
     let reservation;
     try {
       reservation=await this.state.storage.transaction(tx=>reserve(tx,ipHash,sessionHash));
-      if (!reservation.ok) return json({error:message(reservation.code)},reservation.code==='closed'?503:429);
+      if (!reservation.ok) return json({error:message(reservation.code,english)},reservation.code==='closed'?503:429);
       if (!await this.state.storage.getAlarm()) await this.state.storage.setAlarm(Date.now()+3600000);
-    } catch { return json({error:'AI-guiden är pausad eftersom användningsgränsen inte kunde kontrolleras.'},503); }
+    } catch { return json({error:english?'The AI guide is paused because the usage limit could not be checked.':'AI-guiden är pausad eftersom användningsgränsen inte kunde kontrolleras.'},503); }
     try {
       const chat=input.mode==='chat';
       const cards=chat?[]:candidates(input,stats);
@@ -67,7 +68,7 @@ export class BotGate {
         if (response.status===401 || ['insufficient_quota','credit_balance_exhausted','organization_spend_limit_exceeded','project_spend_limit_exceeded'].includes(error.error?.code)) {
           await this.state.storage.transaction(async tx=>{const g=await tx.get('global');await tx.put('global',{...g,paused:true});});
         }
-        return json({error:'AI-guiden är tillfälligt pausad eller kunde inte svara. Använd uträknaren.'},503);
+        return json({error:english?'The AI guide is temporarily paused or could not respond. Please use the calculator.':'AI-guiden är tillfälligt pausad eller kunde inte svara. Använd uträknaren.'},503);
       }
       if (chat) {
         try {
@@ -78,7 +79,7 @@ export class BotGate {
       }
       const result=await response.json();
       return json({answer:safeAnswer(result),cards,year:2025,source:stats.kalla});
-    } catch(error) { return json({error:error?.name==='TimeoutError'?'AI-tjänsten svarade inte i tid. Försök igen senare.':'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.'},503); }
+    } catch(error) { return json({error:english?(error?.name==='TimeoutError'?'The AI service did not respond in time. Please try again later.':'The AI response could not be completed. The calculator and area suggestions are still available.'):(error?.name==='TimeoutError'?'AI-tjänsten svarade inte i tid. Försök igen senare.':'AI-svaret kunde inte slutföras. Uträknaren och områdesförslagen fungerar fortfarande.')},503); }
     finally {
       // Reservation is never refunded: a failed/aborted request may still have cost money.
       try { await this.state.storage.transaction(async tx=>{const g=await tx.get('global');await tx.put('global',{...g,leases:g.leases.filter(x=>x.id!==reservation.id)});}); } catch { /* Lease expires; no new usage allowed if storage is unavailable. */ }
