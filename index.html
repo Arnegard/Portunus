@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Portunus – Hur gammal är du när du får nyckeln?</title>
 <link rel="stylesheet" href="area-map.css?v=20261019">
+<link rel="stylesheet" href="comparison.css?v=20261102">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -229,7 +230,47 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
       <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">31</span><span class="stor stor--vin" id="summa2">24</span></div>
       <a class="knapp forslag-lank" href="#omraden-att-undersoka">Se områden att undersöka</a>
+      <button class="comparison-toggle" type="button" id="comparison-toggle" aria-expanded="false" aria-controls="comparison" hidden>Jämför med ett annat område</button>
     </div>
+  </section>
+
+  <section class="comparison" id="comparison" aria-labelledby="comparison-heading" hidden>
+    <header class="comparison-header">
+      <div><h2 id="comparison-heading" tabindex="-1">Jämför två områden</h2><p>Ditt val från uträknaren bredvid ett område du är nyfiken på.</p></div>
+      <button class="comparison-close" type="button" id="comparison-close">Stäng jämförelsen</button>
+    </header>
+    <div class="comparison-controls">
+      <label>Bostadstyp för båda områdena<select id="comparison-housing"><option value="existing">Befintliga bostäder</option><option value="new">Nyproduktion</option></select></label>
+      <label>Jämför med – kommun<select id="comparison-municipality"></select></label>
+      <label>Jämför med – område<select id="comparison-area"></select></label>
+    </div>
+    <p class="comparison-context" id="comparison-context"></p>
+    <div class="comparison-cards">
+      <article class="comparison-card" aria-labelledby="comparison-left-name">
+        <header class="comparison-card-heading"><p class="comparison-kicker">Ditt val</p><h3 id="comparison-left-name"></h3><p class="comparison-town" id="comparison-left-town"></p></header>
+        <dl>
+          <div><dt>Historisk kötid</dt><dd class="comparison-value" id="comparison-left-queue"></dd></div>
+          <div><dt>Snitthyra</dt><dd><span class="comparison-value" id="comparison-left-rent"></span><small class="comparison-budget" id="comparison-left-budget" hidden></small></dd></div>
+          <div><dt>Med din kötid</dt><dd id="comparison-left-remaining"></dd></div>
+          <div><dt>Underlag</dt><dd id="comparison-left-count"></dd></div>
+        </dl>
+        <p class="comparison-warning" id="comparison-left-warning" hidden>Litet underlag – färre än 10 bostäder för kötid eller hyra. Tolka snittet försiktigt.</p>
+        
+      </article>
+      <article class="comparison-card" aria-labelledby="comparison-right-name">
+        <header class="comparison-card-heading"><p class="comparison-kicker">Alternativ</p><h3 id="comparison-right-name"></h3><p class="comparison-town" id="comparison-right-town"></p></header>
+        <dl id="comparison-right-values" hidden>
+          <div><dt>Historisk kötid</dt><dd class="comparison-value" id="comparison-right-queue"></dd></div>
+          <div><dt>Snitthyra</dt><dd><span class="comparison-value" id="comparison-right-rent"></span><small class="comparison-budget" id="comparison-right-budget" hidden></small></dd></div>
+          <div><dt>Med din kötid</dt><dd id="comparison-right-remaining"></dd></div>
+          <div><dt>Underlag</dt><dd id="comparison-right-count"></dd></div>
+        </dl>
+        <p class="comparison-warning" id="comparison-right-warning" hidden>Litet underlag – färre än 10 bostäder för kötid eller hyra. Tolka snittet försiktigt.</p>
+        <p class="comparison-empty" id="comparison-empty">Välj ett område ovanför för att se jämförelsen.</p>
+      </article>
+    </div>
+    <p class="comparison-summary" id="comparison-summary" role="status" hidden></p>
+    <p class="comparison-note" id="comparison-note"></p>
   </section>
 
   <section class="area-map-section" id="omradeskarta" aria-labelledby="map-heading">
@@ -405,6 +446,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     document.getElementById("statistiknotering").textContent = "Underlag för " + form.kommun.value + " – " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + hyresnotering
       + (total === 0 ? " Inga bostäder matchar dessa filter under 2025." : "")
       + ((data.antal > 0 && data.antal < 10) || (data.antalNy > 0 && data.antalNy < 10) ? " Färre än 10 bostäder i minst en kategori: tolka uppskattningen försiktigt." : "");
+    if (typeof CustomEvent === "function") document.dispatchEvent(new CustomEvent("portunus:calculated", {detail:{municipality:form.kommun.value, area:omrade, queue:kotid, budget:varden.budget}}));
   }
 
   // Enkelt statistikfilter, ingen AI eller bostadsgaranti.
@@ -460,6 +502,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   raknaUtAlder();
 </script>
 
+<script src="comparison.js?v=20261102"></script>
 <script src="map-locations.js?v=20261019"></script>
 <script src="area-map.js?v=20261019"></script>
 <script src="bot-config.js?v=20261019"></script>
