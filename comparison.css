@@ -1,0 +1,32 @@
+.comparison[hidden], .comparison [hidden], .comparison-toggle[hidden] { display: none; }
+.comparison-toggle { width: 100%; height: auto; min-height: 48px; margin-top: 12px; padding: 12px 18px; border: 1px solid var(--vin); border-radius: 999px; background: transparent; color: var(--vin); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.comparison-toggle:hover, .comparison-close:hover { background: var(--falt); }
+.comparison { margin: 0 24px; padding: 48px 64px; border-radius: 36px; background: var(--taupe-ljus); scroll-margin-top: 24px; }
+.comparison-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.comparison h2 { font-size: clamp(24px, 3vw, 34px); }
+.comparison-header p, .comparison-context { color: var(--dampad); font-size: 15px; line-height: 1.6; }
+.comparison-close { min-height: 44px; padding: 8px 16px; border: 1px solid var(--vin); border-radius: 999px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; flex-shrink: 0; }
+.comparison-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0 12px; }
+.comparison-controls label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; }
+.comparison-controls select { width: 100%; min-width: 0; height: 50px; padding: 0 12px; border: 1px solid var(--kant); border-radius: 14px; color: var(--kol); background: var(--falt); font: inherit; font-size: 16px; font-weight: 400; }
+.comparison-context { margin: 0 0 24px; }
+.comparison-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.comparison-card { min-width: 0; padding: 28px; border: 1px solid var(--kant); border-radius: 24px; background: var(--creme); overflow-wrap: anywhere; }
+.comparison-card-heading { min-height: 112px; }
+.comparison-kicker { margin: 0 0 8px; color: var(--vin); text-transform: uppercase; font-size: 11px; font-weight: 600; letter-spacing: .12em; }
+.comparison h3 { margin: 0 0 4px; color: var(--petrol); font-family: var(--rubrik); font-size: 24px; font-weight: 500; line-height: 1.25; }
+.comparison-town { margin: 0; font-size: 14px; color: var(--dampad); }
+.comparison dl { margin: 12px 0 0; font-variant-numeric: tabular-nums; }
+.comparison dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: baseline; gap: 12px; min-height: 70px; padding: 16px 0; border-top: 1px solid var(--kant); }
+.comparison dt { color: var(--dampad); font-size: 14px; line-height: 1.4; }
+.comparison dd { margin: 0; text-align: right; font-size: 17px; font-weight: 500; line-height: 1.4; }
+.comparison .comparison-value { color: var(--petrol); font-size: 23px; }
+.comparison .comparison-value.comparison-missing { color: var(--dampad); font-size: 16px; font-weight: 400; }
+.comparison-budget { display: block; margin-top: 6px; color: var(--dampad); font-size: 12px; font-weight: 400; }
+.comparison-warning { margin: 14px 0 0; color: var(--vin); font-size: 13px; line-height: 1.5; }
+.comparison-empty { margin-top: 12px; padding: 28px 16px; border: 1px dashed var(--kant); border-radius: 16px; font-size: 16px; color: var(--dampad); line-height: 1.6; }
+.comparison-summary { margin: 20px 0 0; padding: 20px 24px; border-left: 3px solid var(--vin); border-radius: 0 16px 16px 0; background: var(--falt); color: var(--petrol); font-size: 16px; line-height: 1.6; }
+.comparison-note { max-width: 780px; margin: 20px 0 0; font-size: 13px; color: var(--dampad); line-height: 1.6; }
+@media (max-width: 1100px) { .comparison { padding: 40px 32px; } }
+@media (max-width: 700px) { .comparison-controls { grid-template-columns: 1fr; } .comparison-cards { grid-template-columns: 1fr; } .comparison-card-heading { min-height: 0; margin-bottom: 24px; } }
+@media (max-width: 600px) { .comparison { margin: 0 12px; padding: 28px 20px; border-radius: 28px; } .comparison-header { flex-wrap: wrap; gap: 8px; } .comparison-card { padding: 22px 18px; } .comparison .comparison-value { font-size: 20px; } .comparison-summary { padding: 16px 18px; } }
