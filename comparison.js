@@ -2,7 +2,7 @@
 var PortunusComparison = (function () {
   'use strict';
   var number = function (value) { return new Intl.NumberFormat('sv-SE').format(value); };
-  function metrics(data, housing, queue) {
+  function metrics(data, housing, queue, age) {
     var fresh = housing === 'new';
     var q = fresh ? data.ny : data.vanlig, rent = fresh ? data.hyraNy : data.hyra;
     var count = fresh ? data.antalNy : data.antal, rentCount = fresh ? data.antalHyraNy : data.antalHyra;
@@ -12,6 +12,7 @@ var PortunusComparison = (function () {
       count: Number.isInteger(count) && count > 0 ? count : 0,
       rentCount: Number.isInteger(rentCount) && rentCount > 0 ? rentCount : 0,
       remaining: hasQueue ? Math.max(q - queue, 0) : null,
+      age: hasQueue && Number.isFinite(age) ? age + Math.max(q - queue, 0) : null,
       small: (hasQueue && count < 10) || (hasRent && rentCount < 10) };
   }
   function describe(a, b, leftName, rightName) {
@@ -38,7 +39,7 @@ var PortunusComparison = (function () {
     var housing = document.getElementById('comparison-housing');
     var toggle = document.getElementById('comparison-toggle');
     var personal = uppdateraValidering();
-    var state = {municipality:form.kommun.value, area:form.omrade.value, queue:personal.kotid, budget:personal.budget};
+    var state = {municipality:form.kommun.value, area:form.omrade.value, queue:personal.kotid, budget:personal.budget, age:personal.alder};
     Object.keys(data).sort(function (a, b) { return a.localeCompare(b, 'sv'); }).forEach(function (name) { town.add(new Option(name, name)); });
     town.value = state.municipality;
     function populate() {
@@ -58,11 +59,14 @@ var PortunusComparison = (function () {
         ? (values.rent === state.budget ? 'Samma som din maxhyra' : number(Math.abs(values.rent - state.budget)) + ' kr ' + (values.rent < state.budget ? 'under' : 'över') + ' din maxhyra') : '';
       budget.hidden = !budget.textContent;
       document.getElementById('comparison-' + side + '-remaining').textContent = values.remaining === null ? 'Underlag saknas' : values.remaining === 0 ? 'Din kötid når snittet' : number(values.remaining) + ' år till snittet';
+      var age = document.getElementById('comparison-' + side + '-age');
+      age.textContent = values.age === null ? 'Underlag saknas' : number(values.age) + ' år';
+      age.classList.toggle('comparison-missing', values.age === null);
       document.getElementById('comparison-' + side + '-count').textContent = values.count === 0 && values.rentCount === 0 ? 'Underlag saknas' : values.count === values.rentCount ? number(values.count) + ' bostäder' : number(values.count) + ' för kötid · ' + number(values.rentCount) + ' för hyra';
       document.getElementById('comparison-' + side + '-warning').hidden = !values.small;
     }
     function render() {
-      var left = metrics(data[state.municipality][state.area], housing.value, state.queue);
+      var left = metrics(data[state.municipality][state.area], housing.value, state.queue, state.age);
       writeCard('left', state.municipality, state.area, left);
       document.getElementById('comparison-context').textContent = 'Din kötid: ' + number(state.queue) + ' år' + (state.budget === null ? '' : ' · Maxhyra: ' + number(state.budget) + ' kr/mån') + '. Uppdateras när du gör en ny uträkning.';
       var selected = !!area.value;
@@ -77,7 +81,7 @@ var PortunusComparison = (function () {
         summary.textContent = '';
         return;
       }
-      var right = metrics(data[town.value][area.value], housing.value, state.queue);
+      var right = metrics(data[town.value][area.value], housing.value, state.queue, state.age);
       writeCard('right', town.value, area.value, right);
       var same = state.municipality === town.value && state.area === area.value;
       var leftName = state.area, rightName = area.value;
@@ -105,7 +109,7 @@ var PortunusComparison = (function () {
       render();
     });
     populate();
-    document.getElementById('comparison-note').textContent = 'Samma bostadstyp i båda korten. Historiska snitt för ettor och tvåor ' + statistik2025.ar + ', ingen bostadsgaranti. Saknade uppgifter betyder inte att bostäder saknas.';
+    document.getElementById('comparison-note').textContent = 'Samma bostadstyp i båda korten. Historiska snitt för ettor och tvåor ' + statistik2025.ar + ', ingen bostadsgaranti. Beräknad ålder utgår från det historiska kösnittet. Saknade uppgifter betyder inte att bostäder saknas.';
     render();
     toggle.hidden = false;
   }
