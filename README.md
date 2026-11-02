@@ -14,6 +14,12 @@ QR-koden leder till **https://arnegard.github.io/Portunus/**.
 
 Läs om underlaget och hur det uppdateras i [STATISTICS.md](STATISTICS.md).
 
+## Jämför två områden
+
+Öppna **Jämför med ett annat område** under uträknarens resultat. Det vänstra kortet följer senaste giltiga uträkningen; välj kommun och område separat för det högra. Bostadstypen gäller båda korten. Jämförelsen visar historisk kötid, snitthyra, skillnaden mot egen kötid och antal bostäder, samt hyresmarginal om maxhyra är angiven. Nyproduktion med saknad statistik får ingen gissad siffra. En kort sammanfattning visar skillnaderna och små underlag markeras.
+
+En ny giltig uträkning uppdaterar det första området och personliga värden men behåller det andra områdesvalet. På mobil staplas korten. Inga nya AI-anrop eller externa datakällor används. Kör `node --test tests/comparison.cjs` och `node tests/calculator.cjs` för data- och beräknarkontroller.
+
 ## Områdeskarta
 
 Utforska de 237 områdena på kartan och tryck på en markör för snitthyra och kötid. Filtrera på kommun, bostadstyp eller uträknarens kötid och maxhyra. Knappen i områdets ruta väljer området i uträknaren. Lägena är ungefärliga; se [MAP.md](MAP.md) för geodata, licenser och tester.
