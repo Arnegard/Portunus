@@ -252,6 +252,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
           <div><dt>Historisk kötid</dt><dd class="comparison-value" id="comparison-left-queue"></dd></div>
           <div><dt>Snitthyra</dt><dd><span class="comparison-value" id="comparison-left-rent"></span><small class="comparison-budget" id="comparison-left-budget" hidden></small></dd></div>
           <div><dt>Med din kötid</dt><dd id="comparison-left-remaining"></dd></div>
+          <div><dt>Din beräknade ålder vid tillträde</dt><dd class="comparison-value" id="comparison-left-age"></dd></div>
           <div><dt>Underlag</dt><dd id="comparison-left-count"></dd></div>
         </dl>
         <p class="comparison-warning" id="comparison-left-warning" hidden>Litet underlag – färre än 10 bostäder för kötid eller hyra. Tolka snittet försiktigt.</p>
@@ -263,6 +264,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
           <div><dt>Historisk kötid</dt><dd class="comparison-value" id="comparison-right-queue"></dd></div>
           <div><dt>Snitthyra</dt><dd><span class="comparison-value" id="comparison-right-rent"></span><small class="comparison-budget" id="comparison-right-budget" hidden></small></dd></div>
           <div><dt>Med din kötid</dt><dd id="comparison-right-remaining"></dd></div>
+          <div><dt>Din beräknade ålder vid tillträde</dt><dd class="comparison-value" id="comparison-right-age"></dd></div>
           <div><dt>Underlag</dt><dd id="comparison-right-count"></dd></div>
         </dl>
         <p class="comparison-warning" id="comparison-right-warning" hidden>Litet underlag – färre än 10 bostäder för kötid eller hyra. Tolka snittet försiktigt.</p>
@@ -446,7 +448,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     document.getElementById("statistiknotering").textContent = "Underlag för " + form.kommun.value + " – " + omrade + ": " + data.antal + " befintliga bostäder och " + data.antalNy + " nyproducerade bostäder under 2025." + hyresnotering
       + (total === 0 ? " Inga bostäder matchar dessa filter under 2025." : "")
       + ((data.antal > 0 && data.antal < 10) || (data.antalNy > 0 && data.antalNy < 10) ? " Färre än 10 bostäder i minst en kategori: tolka uppskattningen försiktigt." : "");
-    if (typeof CustomEvent === "function") document.dispatchEvent(new CustomEvent("portunus:calculated", {detail:{municipality:form.kommun.value, area:omrade, queue:kotid, budget:varden.budget}}));
+    if (typeof CustomEvent === "function") document.dispatchEvent(new CustomEvent("portunus:calculated", {detail:{municipality:form.kommun.value, area:omrade, queue:kotid, budget:varden.budget, age:alder}}));
   }
 
   // Enkelt statistikfilter, ingen AI eller bostadsgaranti.
@@ -502,7 +504,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   raknaUtAlder();
 </script>
 
-<script src="comparison.js?v=20261102"></script>
+<script src="comparison.js?v=20261102-age"></script>
 <script src="map-locations.js?v=20261019"></script>
 <script src="area-map.js?v=20261019"></script>
 <script src="bot-config.js?v=20261019"></script>
