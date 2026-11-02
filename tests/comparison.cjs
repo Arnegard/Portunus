@@ -41,3 +41,14 @@ test('equal values, small samples and opposing trade-offs are explicit',()=>{
  assert.match(describe(a,a,'A','A'),/samma område/);
  assert.equal(metrics({ny:4,hyraNy:8000,antalNy:12,antalHyraNy:3},'new',4).small,true);
 });
+
+
+test('estimated age uses current age plus remaining queue time for each housing type',()=>{
+ const d=data.Nacka['Nacka Strand'];
+ assert.equal(metrics(d,'existing',10,31).age,34);
+ assert.equal(metrics(data.Nacka.Orminge,'existing',10,31).age,31);
+ assert.equal(metrics(d,'existing',4,35).age,44);
+ assert.equal(metrics(d,'new',10,31).age,null);
+ assert.equal(metrics({vanlig:0,antal:1,hyra:7000,antalHyra:1},'existing',0,18).age,18);
+ assert.equal(metrics(d,'existing',10,undefined).age,null);
+});
