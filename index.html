@@ -53,6 +53,8 @@ h1 { margin: 0; font-family: var(--rubrik); font-size: 52px; line-height: 1.1; f
 .formular__falt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .formular label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; }
 .formular input, .formular select { height: 50px; width: 100%; padding: 0 16px; font: inherit; font-size: 17px; font-weight: 400; color: var(--kol); border: 1px solid var(--kant); border-radius: 16px; background: var(--falt); }
+.formular select:disabled { background: #E4DED8; color: #968B80; border-color: var(--taupe-ljus); cursor: not-allowed; }
+.formular label:has(select:disabled) { color: #968B80; }
 .formular input::placeholder { color: #968B80; }
 .knapp { height: 56px; border: none; border-radius: 999px; background: var(--vin); color: var(--creme); font: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; box-shadow: 0 12px 24px -12px rgba(125, 64, 71, 0.6); transition: background .3s ease; }
 .knapp:hover { background: #6A353B; }
@@ -206,6 +208,9 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
             <label>Kötid i år
               <input type="number" name="kotid" min="0" max="4" step="1" placeholder="2" aria-describedby="kotid-hjalp">
             </label>
+            <label>Sök områdesförslag i
+              <select name="forslagScope"><option value="kommun">Vald kommun</option><option value="alla">Alla kommuner</option></select>
+            </label>
             <label>Kommun
               <select name="kommun" aria-describedby="omrade-hjalp"></select>
             </label>
@@ -214,9 +219,6 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
             </label>
             <label>Maxhyra i kr/mån (valfritt)
               <input type="number" name="maxhyra" min="1" step="1" placeholder="7500" aria-describedby="budget-hjalp">
-            </label>
-            <label>Sök områdesförslag i
-              <select name="forslagScope"><option value="kommun">Vald kommun</option><option value="alla">Alla kommuner</option></select>
             </label>
           </div>
           <p id="budget-hjalp" style="margin: 0; font-size: 13px; line-height: 1.5;">Fyll i maxhyra för områdesförslag för ettor och tvåor. Hyran jämförs med områdets snitt för 2025.</p>
@@ -531,6 +533,12 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   document.getElementById("kotidsform").alder.addEventListener("input", uppdateraValidering);
   document.getElementById("kotidsform").kotid.addEventListener("input", uppdateraValidering);
   form.kommun.addEventListener("change", uppdateraOmraden);
+  // "Alla kommuner" gör kommunvalet grått och låst.
+  function uppdateraKommunlas() {
+    form.kommun.disabled = form.forslagScope.value === "alla";
+  }
+  form.forslagScope.addEventListener("change", uppdateraKommunlas);
+  uppdateraKommunlas();
   raknaUtAlder();
 </script>
 
