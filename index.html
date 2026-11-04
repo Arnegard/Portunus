@@ -98,6 +98,24 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 .forslag h3 { margin: 0 0 12px; font-family: var(--rubrik); font-size: 20px; color: var(--petrol); }
 .forslag article p { line-height: 1.6; margin: 10px 0; }
 .forslag article button { padding: 10px 16px; border: 1px solid var(--vin); border-radius: 20px; background: transparent; color: var(--vin); font: inherit; cursor: pointer; }
+.bostadslank {
+  display: inline-block;
+  margin-top: 12px;
+  margin-left: 8px;
+  padding: 12px 20px;
+  background: var(--vin);
+  color: var(--creme);
+  border-radius: 20px;
+  text-decoration: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.bostadslank:hover {
+  background: #6A353B;
+}
 @media (max-width: 1100px) { .forslag { padding: 40px 32px; } }
 @media (max-width: 600px) { .forslag { margin: 0 12px; padding: 32px 20px; border-radius: 28px; } .forslag__lista { grid-template-columns: 1fr; } }
 /* AI-guide */
@@ -353,6 +371,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
 
 </main>
 
+<script src="bostadslankar.js"></script>
 <script src="statistics-2025.js?v=20261010"></script>
 <script>
   // Data finns i statistics-2025.js och kräver ingen server eller inloggning.
@@ -487,7 +506,18 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
         : "Beräknad återstående kötid: " + formateraAr(forslag.kvar) + ". Uppskattad ålder: " + (varden.alder+forslag.kvar) + " år."; kort.append(tid);
       var underlag = document.createElement("p"); underlag.textContent = "Underlag: " + forslag.antal + " bostäder" + (forslag.hyresantal !== forslag.antal ? ", varav " + forslag.hyresantal + " med hyresuppgift" : "") + "." + (forslag.antal<10 || forslag.hyresantal<10 ? " Litet underlag – tolka snittet försiktigt." : ""); kort.append(underlag);
       var knapp = document.createElement("button"); knapp.type="button"; knapp.textContent="Visa i uträknaren";
-      knapp.addEventListener("click", function() { form.kommun.value=forslag.kommun; uppdateraOmraden(); form.omrade.value=forslag.omrade; if (raknaUtAlder() === false) return; document.getElementById("rakning").scrollIntoView({behavior:"smooth",block:"center"}); }); kort.append(knapp);
+      knapp.addEventListener("click", function() { form.kommun.value=forslag.kommun; uppdateraOmraden(); form.omrade.value=forslag.omrade; if (raknaUtAlder() === false) return; document.getElementById("rakning").scrollIntoView({behavior:"smooth",block:"center"}); }); 
+      kort.append(knapp);
+
+      var bostadslank = document.createElement("a");
+      bostadslank.href = skapaBostadslank(forslag.kommun, forslag.omrade);
+      bostadslank.target = "_blank";
+      bostadslank.rel = "noopener noreferrer";
+      bostadslank.textContent = "Sök bostäder i " + forslag.omrade;
+      bostadslank.className = "bostadslank";
+
+      kort.append(bostadslank);
+
       lista.append(kort);
     });
   }
