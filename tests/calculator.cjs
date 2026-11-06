@@ -1,11 +1,12 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const linkSource=fs.readFileSync('bostadslankar.js','utf8'); // index.html laddar bostadslankar.js före inline-skriptet, så testet måste också göra det.
 const dataSource=fs.readFileSync('statistics-2025.js','utf8');
 const html=fs.readFileSync('index.html','utf8');
 function element(value='') { return {value,textContent:'',placeholder:'',max:'',options:[],children:[],handlers:{},classList:{set:new Set(),toggle(n,on){on?this.set.add(n):this.set.delete(n)}},setCustomValidity(m){this.error=m},addEventListener(k,fn){this.handlers[k]=fn},add(o){this.options.push(o);if(!this.value)this.value=o.value},replaceChildren(){this.options=[];this.children=[];this.value=''},append(child){this.children.push(child)},scrollIntoView(){}}; }
 const els={}; const form=element(); ['alder','kotid','kommun','omrade','maxhyra','forslagScope'].forEach(k=>form[k]=element());form.reportValidity=()=>!form.alder.error&&!form.kotid.error&&!form.maxhyra.error;els.kotidsform=form;
 form.forslagScope.value='kommun';
-const ctx={document:{createElement(){return element()},getElementById(id){return els[id] ||= element()}},Option:function(text,value){return{text,value}},console};
-vm.createContext(ctx);vm.runInContext(dataSource,ctx);vm.runInContext(html.match(/<script>\s*([\s\S]*?)<\/script>/)[1],ctx);
+const ctx={document:{createElement(){return element()},getElementById(id){return els[id] ||= element()}},Option:function(text,value){return{text,value}},URL,console};
+vm.createContext(ctx);vm.runInContext(linkSource,ctx);vm.runInContext(dataSource,ctx);vm.runInContext(html.match(/<script>\s*([\s\S]*?)<\/script>/)[1],ctx);
 assert.equal(form.kommun.value,'Stockholm');assert.equal(form.omrade.value,'Farsta');assert.equal(els.summa1.textContent,22+Math.max(ctx.statistik2025.kommuner.Stockholm.Farsta.vanlig-2,0));
 // Traverse all combinations: own area data, both missing states, no fallback to Farsta.
 for(const [kommun,areas] of Object.entries(ctx.statistik2025.kommuner)) {
@@ -55,7 +56,9 @@ for(const [budget,valid] of [['',true],['0',false],['-1',false],['7500.5',false]
 }
 form.maxhyra.value='1';ctx.raknaUtAlder();assert.equal(els['forslag-lista'].children.length,0);assert(els['forslag-status'].textContent.includes('Inga områden'));
 form.maxhyra.value='10000';form.forslagScope.value='alla';ctx.raknaUtAlder();assert(els['forslag-lista'].children.length>0 && els['forslag-lista'].children.length<=6);
-const first=ctx.hittaForslag(2,10000,null)[0];els['forslag-lista'].children[0].children.at(-1).handlers.click();
+const first=ctx.hittaForslag(2,10000,null)[0];els['forslag-lista'].children[0].children.find(c=>c.textContent==='Visa i uträknaren').handlers.click();
+// Varje förslagskort ska ha en länk till bostadsförmedlingen som öppnas i ny flik.
+const lank=els['forslag-lista'].children[0].children.find(c=>c.className==='bostadslank');assert(lank.href.startsWith('https://bostad.stockholm.se/bostad/'));assert.equal(lank.target,'_blank');assert.equal(ctx.skapaBostadslank('Finns inte','Inget'),'https://bostad.stockholm.se/bostad/');console.log('Housing links on suggestion cards passed.');
 assert.equal(form.kommun.value,first.kommun);assert.equal(form.omrade.value,first.omrade);
 form.maxhyra.value='';ctx.raknaUtAlder();assert.equal(els['forslag-lista'].children.length,0);
 console.log('Recommendation budget/scope/ranking/empty-state/click-through tests passed.');
