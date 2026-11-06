@@ -115,6 +115,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
   transition: background 0.3s ease;
 }
 
+.rakning .bostadslank--resultat { display: flex; justify-content: center; margin: 12px 0 0; min-height: 48px; align-items: center; text-align: center; }
 .bostadslank:hover {
   background: #6A353B;
 }
@@ -250,6 +251,7 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
       <div class="rad"><span>+ din ålder idag</span><span id="alder1">22 år</span><span id="alder2">22 år</span></div>
       <div class="rad rad--summa"><span>Uppskattad ålder vid bostad</span><span class="stor" id="summa1">31</span><span class="stor stor--vin" id="summa2">24</span></div>
       <a class="knapp forslag-lank" href="#omraden-att-undersoka">Se områden att undersöka</a>
+      <a class="bostadslank bostadslank--resultat" id="resultat-bostadslank" href="https://bostad.stockholm.se/bostad/" target="_blank" rel="noopener noreferrer">Sök bostäder i Farsta</a>
       <button class="comparison-toggle" type="button" id="comparison-toggle" aria-expanded="false" aria-controls="comparison" hidden>Jämför med ett annat område</button>
     </div>
   </section>
@@ -462,6 +464,10 @@ h2 { margin: 0; font-family: var(--rubrik); font-size: 38px; line-height: 1.15; 
     var nyResultat = document.getElementById("summa2");
     nyResultat.textContent = harNyproduktion ? Math.round(alderNy) : "Underlag saknas";
     nyResultat.classList.toggle("stor--saknas", !harNyproduktion);
+    // Länken följer området man räknat på, så man kan gå direkt till lediga bostäder där.
+    var resultatLank = document.getElementById("resultat-bostadslank");
+    resultatLank.href = skapaBostadslank(form.kommun.value, omrade);
+    resultatLank.textContent = "Sök bostäder i " + omrade;
     visaForslag(varden);
     var total = data.antal + data.antalNy;
     var hyresnotering = Number.isInteger(data.antalHyra) && Number.isInteger(data.antalHyraNy) && (data.antalHyra !== data.antal || data.antalHyraNy !== data.antalNy)

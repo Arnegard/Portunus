@@ -22,6 +22,7 @@ for(const [kommun,areas] of Object.entries(ctx.statistik2025.kommuner)) {
    assert.equal(els['hyra'+suffix].textContent,rent===null?'Underlag saknas':new Intl.NumberFormat('sv-SE').format(rent)+' kr/mån',kommun+' '+area+' rent');
   }
   assert(els.statistiknotering.textContent.includes(kommun+' – '+area));
+  assert.equal(els['resultat-bostadslank'].textContent,'Sök bostäder i '+area);assert.equal(els['resultat-bostadslank'].href,ctx.skapaBostadslank(kommun,area));
  }
 }
 for(const [age,queue,valid] of [[18,0,true],[18,1,false],[20,2,true],[20,3,false],[99,81,true],[99,82,false],[17,0,false],[100,0,false],[20.5,1,false],[20,1.5,false]]) {
